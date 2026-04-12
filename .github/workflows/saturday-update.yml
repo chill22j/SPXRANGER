@@ -1,0 +1,85 @@
+name: Saturday Market Update
+
+on:
+  schedule:
+    # Every Saturday at 9pm ET (01:00 UTC Sunday)
+    - cron: '0 1 * * 0'
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  update-market-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch SPX and VIX closes
+        id: fetch
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request, json, math, datetime
+
+          def fetch_yahoo(symbol):
+              url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          spx_data = fetch_yahoo("%5EGSPC")
+          vix_data = fetch_yahoo("%5EVIX")
+
+          spx_meta = spx_data["chart"]["result"][0]["meta"]
+          vix_meta = vix_data["chart"]["result"][0]["meta"]
+
+          spx = round(spx_meta["regularMarketPrice"], 2)
+          vix = round(vix_meta["regularMarketPrice"], 2)
+
+          # Get date from last timestamp
+          timestamps = spx_data["chart"]["result"][0]["timestamp"]
+          closes     = spx_data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+          last_ts    = timestamps[-1]
+          close_dt   = datetime.datetime.utcfromtimestamp(last_ts)
+          date_str   = close_dt.strftime("%Y-%m-%d")
+
+          # Calculate HV20 from daily closes
+          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes)) if closes[i] and closes[i-1]]
+          if len(log_rets) >= 5:
+              # Use available data, annualised
+              mean = sum(log_rets) / len(log_rets)
+              var  = sum((r - mean)**2 for r in log_rets) / (len(log_rets) - 1)
+              hv20 = round(math.sqrt(var) * math.sqrt(252) * 100, 2)
+          else:
+              hv20 = None
+
+          # Next Mon-Fri week label
+          dow = close_dt.weekday()  # Mon=0 … Sun=6
+          days_to_mon = (7 - dow) % 7 or 7
+          mon = close_dt + datetime.timedelta(days=days_to_mon)
+          fri = mon + datetime.timedelta(days=4)
+          weekof = f"{mon.month}/{mon.day}–{fri.month}/{fri.day}"
+
+          payload = {
+              "spx": spx,
+              "vix": vix,
+              "hv20": hv20,
+              "date": date_str,
+              "weekof": weekof,
+              "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+          }
+
+          with open("data/market.json", "w") as f:
+              json.dump(payload, f, indent=2)
+
+          print(f"Updated: SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
+          PYEOF
+
+      - name: Commit updated market data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/market.json
+          git diff --staged --quiet || git commit -m "chore: Saturday market update $(date -u '+%Y-%m-%d')"
+          git push
