@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PVI Calc">
+<meta name="apple-mobile-web-app-title" content="SPX Weekly Calc">
 <meta name="theme-color" content="#0a0a0f">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>PVI Range Calculator</title>
+<title>SPX Range Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -159,7 +159,7 @@
 
   <header>
     <div class="header-top">
-      <h1>PVI Range Calculator</h1>
+      <h1>SPX Weekly Range Calculator</h1>
       <span class="version">v4.0</span>
     </div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
@@ -193,7 +193,7 @@
     </button>
     <div class="fetch-status" id="fetchStatus"></div>
 
-    <button class="calc-btn" onclick="calculate()">Calculate PVI Ranges</button>
+    <button class="calc-btn" onclick="calculate()">Calculate SPX Weekly Ranges</button>
     <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
   </div>
 
@@ -219,15 +219,15 @@
 
   <!-- RESULTS -->
   <div class="card" id="resultCard" style="display:none">
-    <div class="card-title">Predicted PVI Range — <span id="resultWeek"></span></div>
+    <div class="card-title">Predicted SPX Weekly Range — <span id="resultWeek"></span></div>
     <div class="result-grid">
       <div class="result-box">
-        <div class="result-label result-label-low">PVI Low</div>
+        <div class="result-label result-label-low">SPX Weekly Low</div>
         <div class="result-value result-value-low" id="resLow">—</div>
         <div class="result-pct" id="resLowPct">—</div>
       </div>
       <div class="result-box">
-        <div class="result-label result-label-high">PVI High</div>
+        <div class="result-label result-label-high">SPX Weekly High</div>
         <div class="result-value result-value-high" id="resHigh">—</div>
         <div class="result-pct" id="resHighPct">—</div>
       </div>
@@ -285,7 +285,7 @@
 
 <script>
   // ── STATE ─────────────────────────────────────────────────────────────────
-  let history = JSON.parse(localStorage.getItem('pvi_history') || '[]');
+  let history = JSON.parse(localStorage.getItem('SPX Weekly_history') || '[]');
   let lastResult = null;
 
   // ── BOOT: load latest market data from repo ───────────────────────────────
@@ -380,12 +380,12 @@
     const wv         = (vix / 100) * Math.sqrt(5 / 252);
     const lowMult    = 1 - k * wv;
     const highMult   = 1 + k * wv;
-    const pviLow     = Math.round(spx * lowMult);
-    const pviHigh    = Math.round(spx * highMult);
-    const mid        = Math.round((pviLow + pviHigh) / 2);
-    const width      = pviHigh - pviLow;
-    const lowPct     = ((pviLow  - spx) / spx * 100).toFixed(1);
-    const highPct    = ((pviHigh - spx) / spx * 100).toFixed(1);
+    const SPX WeeklyLow     = Math.round(spx * lowMult);
+    const SPX WeeklyHigh    = Math.round(spx * highMult);
+    const mid        = Math.round((SPX WeeklyLow + SPX WeeklyHigh) / 2);
+    const width      = SPX WeeklyHigh - SPX WeeklyLow;
+    const lowPct     = ((SPX WeeklyLow  - spx) / spx * 100).toFixed(1);
+    const highPct    = ((SPX WeeklyHigh - spx) / spx * 100).toFixed(1);
     const regime     = isStressed ? 'Stressed' : 'Calm';
 
     // Regime card
@@ -402,15 +402,15 @@
     // Results
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('resultWeek').textContent    = weekof;
-    document.getElementById('resLow').textContent        = pviLow.toLocaleString();
-    document.getElementById('resHigh').textContent       = pviHigh.toLocaleString();
+    document.getElementById('resLow').textContent        = SPX WeeklyLow.toLocaleString();
+    document.getElementById('resHigh').textContent       = SPX WeeklyHigh.toLocaleString();
     document.getElementById('resLowPct').textContent     = lowPct + '% from close';
     document.getElementById('resHighPct').textContent    = '+' + highPct + '% from close';
     document.getElementById('resMid').textContent        = mid.toLocaleString();
     document.getElementById('resWidth').textContent      = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
 
     document.getElementById('saveBtn').style.display = 'block';
-    lastResult = { spx, vix, pviLow, pviHigh, weekof, regime, lowPct, highPct };
+    lastResult = { spx, vix, SPX WeeklyLow, SPX WeeklyHigh, weekof, regime, lowPct, highPct };
   }
 
   // ── HISTORY ───────────────────────────────────────────────────────────────
@@ -418,7 +418,7 @@
     if (!lastResult) return;
     history.unshift({ ...lastResult, savedAt: new Date().toLocaleDateString() });
     if (history.length > 20) history = history.slice(0, 20);
-    localStorage.setItem('pvi_history', JSON.stringify(history));
+    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
     renderHistory();
     const btn = document.getElementById('saveBtn');
     btn.textContent = '✓ Saved';
@@ -427,7 +427,7 @@
 
   function deleteHistory(i) {
     history.splice(i, 1);
-    localStorage.setItem('pvi_history', JSON.stringify(history));
+    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
     renderHistory();
   }
 
@@ -438,8 +438,8 @@
       <div class="history-row">
         <div class="history-date">${h.weekof || h.savedAt}</div>
         <div class="history-close">${parseFloat(h.spx).toLocaleString()}</div>
-        <div class="history-low">${h.pviLow.toLocaleString()}</div>
-        <div class="history-high">${h.pviHigh.toLocaleString()}</div>
+        <div class="history-low">${h.SPX WeeklyLow.toLocaleString()}</div>
+        <div class="history-high">${h.SPX WeeklyHigh.toLocaleString()}</div>
         <button class="del-btn" onclick="deleteHistory(${i})">×</button>
       </div>`).join('');
   }
