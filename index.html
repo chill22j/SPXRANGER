@@ -222,10 +222,10 @@
     const isStressed = vix >= 17;
     const k = isStressed ? 1.80 : 1.60;
     const wv = (vix/100) * Math.sqrt(5/252);
-    const SPX WeeklyLow = Math.round(spx * (1 - k*wv));
-    const SPX WeeklyHigh = Math.round(spx * (1 + k*wv));
-    const mid = Math.round((SPX WeeklyLow+SPX WeeklyHigh)/2);
-    const width = SPX WeeklyHigh - SPX WeeklyLow;
+    const pviLow = Math.round(spx * (1 - k*wv));
+    const pviHigh = Math.round(spx * (1 + k*wv));
+    const mid = Math.round((pviLow+pviHigh)/2);
+    const width = pviHigh - pviLow;
     document.getElementById('regimeCard').style.display = 'block';
     document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → k=' + k.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%</div>';
     document.getElementById('effVol').textContent = vix.toFixed(1) + '%';
@@ -233,14 +233,14 @@
     document.getElementById('highMult').textContent = (1+k*wv).toFixed(4);
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('resultWeek').textContent = weekof;
-    document.getElementById('resLow').textContent = SPX WeeklyLow.toLocaleString();
-    document.getElementById('resHigh').textContent = SPX WeeklyHigh.toLocaleString();
-    document.getElementById('resLowPct').textContent = ((SPX WeeklyLow-spx)/spx*100).toFixed(1) + '% from close';
-    document.getElementById('resHighPct').textContent = '+' + ((SPX WeeklyHigh-spx)/spx*100).toFixed(1) + '% from close';
+    document.getElementById('resLow').textContent = pviLow.toLocaleString();
+    document.getElementById('resHigh').textContent = pviHigh.toLocaleString();
+    document.getElementById('resLowPct').textContent = ((pviLow-spx)/spx*100).toFixed(1) + '% from close';
+    document.getElementById('resHighPct').textContent = '+' + ((pviHigh-spx)/spx*100).toFixed(1) + '% from close';
     document.getElementById('resMid').textContent = mid.toLocaleString();
     document.getElementById('resWidth').textContent = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
     document.getElementById('saveBtn').style.display = 'block';
-    lastResult = { spx, vix, SPX WeeklyLow, SPX WeeklyHigh, weekof, regime: isStressed?'Stressed':'Calm' };
+    lastResult = { spx, vix, pviLow, pviHigh, weekof, regime: isStressed?'Stressed':'Calm' };
   }
 
   function saveToHistory() {
@@ -263,7 +263,7 @@
   function renderHistory() {
     const el = document.getElementById('historyContainer');
     if (!history.length) { el.innerHTML = '<div class="empty-state">No predictions saved yet.</div>'; return; }
-    el.innerHTML = history.map((h,i) => '<div class="history-row"><div class="history-date">' + (h.weekof||h.savedAt) + '</div><div class="history-close">' + parseFloat(h.spx).toLocaleString() + '</div><div class="history-low">' + h.SPX WeeklyLow.toLocaleString() + '</div><div class="history-high">' + h.SPX WeeklyHigh.toLocaleString() + '</div><button class="del-btn" onclick="deleteHistory(' + i + ')">×</button></div>').join('');
+    el.innerHTML = history.map((h,i) => '<div class="history-row"><div class="history-date">' + (h.weekof||h.savedAt) + '</div><div class="history-close">' + parseFloat(h.spx).toLocaleString() + '</div><div class="history-low">' + h.pviLow.toLocaleString() + '</div><div class="history-high">' + h.pviHigh.toLocaleString() + '</div><button class="del-btn" onclick="deleteHistory(' + i + ')">×</button></div>').join('');
   }
 
   renderHistory();
