@@ -319,7 +319,7 @@
     if (!silent) { status.className = 'fetch-status'; status.textContent = 'Contacting Yahoo Finance…'; }
 
     try {
-      const BASE = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+      const BASE = 'https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/';
       const OPTS = '?interval=1d&range=5d';
       const [spxRes, vixRes] = await Promise.all([
         fetch(BASE + '%5EGSPC' + OPTS),
