@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SPX Weekly Calc">
+<meta name="apple-mobile-web-app-title" content="PVI Calc">
 <meta name="theme-color" content="#0a0a0f">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SPX Range Calculator</title>
+<title>PVI Range Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -26,399 +26,228 @@
     --font-mono: 'IBM Plex Mono', monospace;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
-    min-height: 100vh;
-    padding: 32px 20px env(safe-area-inset-bottom);
-  }
-  .container { max-width: 680px; margin: 0 auto; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; padding:32px 20px env(safe-area-inset-bottom); }
+  .container { max-width:680px; margin:0 auto; }
   header { margin-bottom:36px; padding-bottom:20px; border-bottom:1px solid var(--border); }
   .header-top { display:flex; align-items:baseline; gap:12px; margin-bottom:6px; }
-  h1 {
-    font-family: var(--font-mono);
-    font-size: 18px; font-weight:600;
-    letter-spacing: 0.08em; text-transform:uppercase;
-    color: var(--accent);
-  }
-  .version { font-family:var(--font-mono); font-size:11px; color:var(--muted2); letter-spacing:0.05em; }
-  .subtitle { font-size:12px; color:var(--muted2); letter-spacing:0.03em; }
+  h1 { font-family:var(--font-mono); font-size:18px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); }
+  .version { font-family:var(--font-mono); font-size:11px; color:var(--muted2); }
+  .subtitle { font-size:12px; color:var(--muted2); }
   .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px; }
   .card-title { font-family:var(--font-mono); font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted2); margin-bottom:16px; }
   .input-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
   .input-group label { display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:6px; }
-  input[type=number], input[type=text] {
-    width:100%; background:var(--surface2); border:1px solid var(--border);
-    border-radius:4px; color:var(--text);
-    font-family:var(--font-mono); font-size:14px;
-    padding:10px 12px; outline:none;
-    transition: border-color 0.15s;
-    -webkit-appearance: none;
-  }
-  input:focus { border-color: var(--accent3); }
-
-  /* FETCH BUTTON */
-  .fetch-btn {
-    width:100%; background:transparent;
-    border:1px solid var(--accent3); border-radius:4px;
-    color:var(--accent3); font-family:var(--font-mono);
-    font-size:12px; font-weight:500; letter-spacing:0.08em;
-    padding:11px; cursor:pointer; transition:all 0.15s;
-    margin-bottom:8px;
-    display: flex; align-items:center; justify-content:center; gap:8px;
-  }
+  input[type=number],input[type=text] { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font-mono); font-size:14px; padding:10px 12px; outline:none; -webkit-appearance:none; }
+  input:focus { border-color:var(--accent3); }
+  .fetch-btn { width:100%; background:transparent; border:1px solid var(--accent3); border-radius:4px; color:var(--accent3); font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:0.08em; padding:11px; cursor:pointer; transition:all 0.15s; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; }
   .fetch-btn:hover { background:rgba(74,159,240,0.08); }
   .fetch-btn:disabled { opacity:0.5; cursor:not-allowed; }
   .fetch-status { font-family:var(--font-mono); font-size:11px; color:var(--muted2); margin-bottom:10px; min-height:16px; }
-  .fetch-status.ok  { color:var(--accent); }
+  .fetch-status.ok { color:var(--accent); }
   .fetch-status.err { color:var(--accent2); }
-
-  /* SPINNER */
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin { to { transform:rotate(360deg); } }
   .spinner { display:inline-block; width:12px; height:12px; border:2px solid var(--accent3); border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite; }
-
-  .calc-btn {
-    width:100%; background:var(--accent); border:none; border-radius:4px;
-    color:#0a0a0f; font-family:var(--font-mono); font-size:12px;
-    font-weight:600; letter-spacing:0.1em; text-transform:uppercase;
-    padding:14px; cursor:pointer; transition:opacity 0.15s;
-  }
+  .calc-btn { width:100%; background:var(--accent); border:none; border-radius:4px; color:#0a0a0f; font-family:var(--font-mono); font-size:12px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:14px; cursor:pointer; }
   .calc-btn:hover { opacity:0.88; }
-  .save-btn {
-    width:100%; background:transparent; border:1px solid var(--border);
-    border-radius:4px; color:var(--muted2); font-family:var(--font-mono);
-    font-size:11px; letter-spacing:0.08em; padding:10px;
-    cursor:pointer; margin-top:8px; transition:all 0.15s;
-  }
+  .save-btn { width:100%; background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--muted2); font-family:var(--font-mono); font-size:11px; padding:10px; cursor:pointer; margin-top:8px; }
   .save-btn:hover { border-color:var(--accent); color:var(--accent); }
-
-  /* REGIME */
   .regime-badge { padding:12px 14px; border-radius:4px; font-family:var(--font-mono); font-size:12px; display:flex; align-items:center; gap:10px; }
-  .regime-low  { background:#0d1f17; border:1px solid #1a3d2a; color:var(--accent); }
+  .regime-low { background:#0d1f17; border:1px solid #1a3d2a; color:var(--accent); }
   .regime-high { background:#1f0d0d; border:1px solid #3d1a1a; color:var(--accent2); }
   .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .dot-low  { background:var(--accent); }
+  .dot-low { background:var(--accent); }
   .dot-high { background:var(--accent2); }
   .vol-info { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
   .vol-stat { background:var(--surface2); border-radius:4px; padding:10px 12px; }
   .vol-stat-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:4px; }
-  .vol-stat-val   { font-family:var(--font-mono); font-size:16px; font-weight:500; color:var(--text); }
-
-  /* RESULTS */
+  .vol-stat-val { font-family:var(--font-mono); font-size:16px; font-weight:500; }
   .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
   .result-box { background:var(--surface2); border-radius:4px; padding:14px 16px; text-align:center; }
   .result-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted2); margin-bottom:8px; }
-  .result-label-low  { color:#4af0a080; }
+  .result-label-low { color:#4af0a080; }
   .result-label-high { color:#f04a4a80; }
   .result-value { font-family:var(--font-mono); font-size:28px; font-weight:500; }
-  .result-value-low  { color:var(--accent); }
+  .result-value-low { color:var(--accent); }
   .result-value-high { color:var(--accent2); }
   .result-pct { font-family:var(--font-mono); font-size:11px; color:var(--muted2); margin-top:4px; }
   .result-mid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .result-mid-box { background:var(--surface2); border-radius:4px; padding:10px 14px; }
   .result-mid-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:4px; }
-  .result-mid-val   { font-family:var(--font-mono); font-size:16px; font-weight:500; color:var(--text); }
-
-  /* MULT TABLE */
+  .result-mid-val { font-family:var(--font-mono); font-size:16px; font-weight:500; }
   .mult-table { width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11px; }
   .mult-table th { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); padding:6px 8px; text-align:left; border-bottom:1px solid var(--border); }
-  .mult-table td { padding:8px 8px; border-bottom:1px solid var(--surface2); color:var(--text); }
-  .tag { font-size:9px; letter-spacing:0.08em; padding:2px 7px; border-radius:3px; }
-  .tag-low-v  { background:#0d1f17; color:var(--accent); }
+  .mult-table td { padding:8px; border-bottom:1px solid var(--surface2); color:var(--text); }
+  .tag { font-size:9px; padding:2px 7px; border-radius:3px; }
+  .tag-low-v { background:#0d1f17; color:var(--accent); }
   .tag-high-v { background:#1f0d0d; color:var(--accent2); }
-  .accuracy   { font-family:var(--font-mono); font-size:10px; color:var(--accent3); }
-  .note-row   { margin-top:14px; font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.7; }
+  .accuracy { font-family:var(--font-mono); font-size:10px; color:var(--accent3); }
+  .note-row { margin-top:14px; font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.7; }
   .note-row code { color:var(--text); }
-
-  /* HISTORY */
   .history-row { display:grid; grid-template-columns:1fr 80px 80px 80px 28px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--surface2); font-family:var(--font-mono); font-size:11px; }
-  .history-date  { color:var(--muted2); }
-  .history-close { color:var(--text); }
-  .history-low   { color:var(--accent); }
-  .history-high  { color:var(--accent2); }
+  .history-date { color:var(--muted2); }
+  .history-low { color:var(--accent); }
+  .history-high { color:var(--accent2); }
   .del-btn { background:none; border:none; color:var(--muted2); cursor:pointer; font-size:14px; padding:0; }
   .del-btn:hover { color:var(--accent2); }
   .empty-state { font-family:var(--font-mono); font-size:11px; color:var(--muted2); padding:10px 0; }
-
-  /* LAST UPDATED */
-  .last-updated { font-family:var(--font-mono); font-size:10px; color:var(--muted2); margin:6px 0 10px; }
-
-  @media (max-width: 480px) {
-    body { padding: 20px 14px env(safe-area-inset-bottom); }
-    h1 { font-size: 15px; }
-    .input-grid { grid-template-columns: 1fr; }
-    .vol-info { grid-template-columns: 1fr 1fr 1fr; }
-    .result-value { font-size: 24px; }
-    .history-row { grid-template-columns: 1fr 70px 70px 70px 24px; font-size: 10px; }
-  }
+  @media (max-width:480px) { body { padding:20px 14px; } h1 { font-size:15px; } .input-grid { grid-template-columns:1fr; } .result-value { font-size:24px; } .history-row { grid-template-columns:1fr 65px 65px 65px 24px; font-size:10px; } }
 </style>
 </head>
 <body>
 <div class="container">
-
   <header>
-    <div class="header-top">
-      <h1>SPX Weekly Range Calculator</h1>
-      <span class="version">v4.0</span>
-    </div>
+    <div class="header-top"><h1>PVI Range Calculator</h1><span class="version">v4.1</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
-
-  <!-- INPUTS -->
   <div class="card">
     <div class="card-title">Market Inputs — Friday Close</div>
     <div class="input-grid">
-      <div class="input-group">
-        <label>SPX Close</label>
-        <input type="number" id="spx" placeholder="6816.89" step="0.01" inputmode="decimal">
-      </div>
-      <div class="input-group">
-        <label>VIX Close</label>
-        <input type="number" id="vix" placeholder="19.23" step="0.01" inputmode="decimal">
-      </div>
-      <div class="input-group">
-        <label>HV20 % (optional)</label>
-        <input type="number" id="hv20" placeholder="19.55" step="0.1" inputmode="decimal">
-      </div>
-      <div class="input-group">
-        <label>Week of</label>
-        <input type="text" id="weekof" placeholder="4/13–4/17">
-      </div>
+      <div class="input-group"><label>SPX Close</label><input type="number" id="spx" placeholder="6816.89" step="0.01" inputmode="decimal"></div>
+      <div class="input-group"><label>VIX Close</label><input type="number" id="vix" placeholder="19.23" step="0.01" inputmode="decimal"></div>
+      <div class="input-group"><label>HV20 % (optional)</label><input type="number" id="hv20" placeholder="19.55" step="0.1" inputmode="decimal"></div>
+      <div class="input-group"><label>Week of</label><input type="text" id="weekof" placeholder="4/13–4/17"></div>
     </div>
-
     <button class="fetch-btn" id="fetchBtn" onclick="fetchMarketData()">
-      <span id="fetchIcon">⟳</span>
-      <span id="fetchLabel">Auto-fetch latest SPX &amp; VIX</span>
+      <span id="fetchIcon">⟳</span><span id="fetchLabel">Auto-fetch latest SPX & VIX</span>
     </button>
     <div class="fetch-status" id="fetchStatus"></div>
-
-    <button class="calc-btn" onclick="calculate()">Calculate SPX Weekly Ranges</button>
+    <button class="calc-btn" onclick="calculate()">Calculate PVI Ranges</button>
     <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
   </div>
-
-  <!-- REGIME -->
   <div class="card" id="regimeCard" style="display:none">
     <div class="card-title">Volatility Regime</div>
     <div id="regimeBadge"></div>
     <div class="vol-info">
-      <div class="vol-stat">
-        <div class="vol-stat-label">Vol Input</div>
-        <div class="vol-stat-val" id="effVol">—</div>
-      </div>
-      <div class="vol-stat">
-        <div class="vol-stat-label">Low Mult</div>
-        <div class="vol-stat-val" id="lowMult">—</div>
-      </div>
-      <div class="vol-stat">
-        <div class="vol-stat-label">High Mult</div>
-        <div class="vol-stat-val" id="highMult">—</div>
-      </div>
+      <div class="vol-stat"><div class="vol-stat-label">Vol Input</div><div class="vol-stat-val" id="effVol">—</div></div>
+      <div class="vol-stat"><div class="vol-stat-label">Low Mult</div><div class="vol-stat-val" id="lowMult">—</div></div>
+      <div class="vol-stat"><div class="vol-stat-label">High Mult</div><div class="vol-stat-val" id="highMult">—</div></div>
     </div>
   </div>
-
-  <!-- RESULTS -->
   <div class="card" id="resultCard" style="display:none">
-    <div class="card-title">Predicted SPX Weekly Range — <span id="resultWeek"></span></div>
+    <div class="card-title">Predicted PVI Range — <span id="resultWeek"></span></div>
     <div class="result-grid">
-      <div class="result-box">
-        <div class="result-label result-label-low">SPX Weekly Low</div>
-        <div class="result-value result-value-low" id="resLow">—</div>
-        <div class="result-pct" id="resLowPct">—</div>
-      </div>
-      <div class="result-box">
-        <div class="result-label result-label-high">SPX Weekly High</div>
-        <div class="result-value result-value-high" id="resHigh">—</div>
-        <div class="result-pct" id="resHighPct">—</div>
-      </div>
+      <div class="result-box"><div class="result-label result-label-low">PVI Low</div><div class="result-value result-value-low" id="resLow">—</div><div class="result-pct" id="resLowPct">—</div></div>
+      <div class="result-box"><div class="result-label result-label-high">PVI High</div><div class="result-value result-value-high" id="resHigh">—</div><div class="result-pct" id="resHighPct">—</div></div>
     </div>
     <div class="result-mid">
-      <div class="result-mid-box">
-        <div class="result-mid-label">Midpoint</div>
-        <div class="result-mid-val" id="resMid">—</div>
-      </div>
-      <div class="result-mid-box">
-        <div class="result-mid-label">Range Width</div>
-        <div class="result-mid-val" id="resWidth">—</div>
-      </div>
+      <div class="result-mid-box"><div class="result-mid-label">Midpoint</div><div class="result-mid-val" id="resMid">—</div></div>
+      <div class="result-mid-box"><div class="result-mid-label">Range Width</div><div class="result-mid-val" id="resWidth">—</div></div>
     </div>
   </div>
-
-  <!-- FORMULA TABLE -->
   <div class="card">
     <div class="card-title">Formula Reference</div>
     <table class="mult-table">
-      <thead>
-        <tr>
-          <th>VIX</th><th>Regime</th><th>Vol Input</th><th>k</th><th>Confidence</th>
-        </tr>
-      </thead>
+      <thead><tr><th>VIX</th><th>Regime</th><th>Vol Input</th><th>k</th><th>Confidence</th></tr></thead>
       <tbody>
-        <tr>
-          <td>&lt; 17</td>
-          <td><span class="tag tag-low-v">Calm</span></td>
-          <td>VIX</td><td>1.60</td>
-          <td><span class="accuracy">High</span></td>
-        </tr>
-        <tr>
-          <td>≥ 17</td>
-          <td><span class="tag tag-high-v">Stressed</span></td>
-          <td>VIX</td><td>1.80</td>
-          <td><span class="accuracy">High</span></td>
-        </tr>
+        <tr><td>&lt; 17</td><td><span class="tag tag-low-v">Calm</span></td><td>VIX</td><td>1.60</td><td><span class="accuracy">High</span></td></tr>
+        <tr><td>≥ 17</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.80</td><td><span class="accuracy">High</span></td></tr>
       </tbody>
     </table>
-    <div class="note-row">
-      Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>
-      Calibrated on 12 weeks of 2026 SPX data. Avg error: ~33 pts Low, ~36 pts High.<br>
-      SPX only — do not apply to individual stocks.
-    </div>
+    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 12 weeks of 2026 data. Avg error: ~33 pts Low, ~36 pts High. SPX only.</div>
   </div>
-
-  <!-- HISTORY -->
   <div class="card">
     <div class="card-title">Prediction History</div>
     <div id="historyContainer"><div class="empty-state">No predictions saved yet.</div></div>
   </div>
-
 </div>
-
 <script>
-  // ── STATE ─────────────────────────────────────────────────────────────────
-  let history = JSON.parse(localStorage.getItem('SPX Weekly_history') || '[]');
+  let history = JSON.parse(localStorage.getItem('pvi_history') || '[]');
   let lastResult = null;
 
-  // ── BOOT: load latest market data from repo ───────────────────────────────
   async function loadLatestData() {
     const status = document.getElementById('fetchStatus');
     try {
-      // data/market.json is in the same repo, updated every Saturday by GitHub Actions
       const res = await fetch('data/market.json?_=' + Date.now());
-      if (!res.ok) throw new Error('data/market.json not found');
+      if (!res.ok) throw new Error('not found');
       const d = await res.json();
       populateFields(d);
       const updated = d.updated ? new Date(d.updated).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : d.date;
       status.className = 'fetch-status ok';
-      status.textContent = `✓ Auto-loaded: SPX ${d.spx.toLocaleString()} | VIX ${d.vix} | as of ${updated}`;
-    } catch (e) {
-      // Fall back to live fetch if local file fails
-      fetchMarketData(true);
-    }
+      status.textContent = '✓ Auto-loaded: SPX ' + d.spx.toLocaleString() + ' | VIX ' + d.vix + ' | as of ' + updated;
+    } catch(e) { fetchMarketData(true); }
   }
 
-  // ── LIVE FETCH (the button) ───────────────────────────────────────────────
   async function fetchMarketData(silent = false) {
-    const btn    = document.getElementById('fetchBtn');
-    const icon   = document.getElementById('fetchIcon');
-    const label  = document.getElementById('fetchLabel');
+    const btn = document.getElementById('fetchBtn');
+    const icon = document.getElementById('fetchIcon');
+    const label = document.getElementById('fetchLabel');
     const status = document.getElementById('fetchStatus');
-
     btn.disabled = true;
     icon.innerHTML = '<span class="spinner"></span>';
     label.textContent = 'Fetching…';
     if (!silent) { status.className = 'fetch-status'; status.textContent = 'Contacting Yahoo Finance…'; }
-
     try {
-      const BASE = 'https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/';
+      const PROXY = 'https://corsproxy.io/?';
+      const YF = 'https://query1.finance.yahoo.com/v8/finance/chart/';
       const OPTS = '?interval=1d&range=5d';
       const [spxRes, vixRes] = await Promise.all([
-        fetch(BASE + '%5EGSPC' + OPTS),
-        fetch(BASE + '%5EVIX'  + OPTS)
+        fetch(PROXY + encodeURIComponent(YF + '%5EGSPC' + OPTS)),
+        fetch(PROXY + encodeURIComponent(YF + '%5EVIX' + OPTS))
       ]);
-      if (!spxRes.ok || !vixRes.ok) throw new Error(`HTTP ${spxRes.status}`);
+      if (!spxRes.ok || !vixRes.ok) throw new Error('HTTP ' + spxRes.status);
       const [spxJson, vixJson] = await Promise.all([spxRes.json(), vixRes.json()]);
-
-      const spxMeta = spxJson.chart.result[0].meta;
-      const vixMeta = vixJson.chart.result[0].meta;
-      const spx     = +spxMeta.regularMarketPrice.toFixed(2);
-      const vix     = +vixMeta.regularMarketPrice.toFixed(2);
-
-      const ts      = spxJson.chart.result[0].timestamp;
-      const dt      = new Date(ts[ts.length - 1] * 1000);
-      const date    = dt.toISOString().slice(0,10);
-      const dow     = dt.getDay();
-      const toMon   = dow === 5 ? 3 : dow === 6 ? 2 : 1;
-      const mon     = new Date(dt); mon.setDate(dt.getDate() + toMon);
-      const fri     = new Date(mon); fri.setDate(mon.getDate() + 4);
-      const fmt     = d => `${d.getMonth()+1}/${d.getDate()}`;
-      const weekof  = `${fmt(mon)}–${fmt(fri)}`;
-
-      populateFields({ spx, vix, date, weekof });
+      const spx = +spxJson.chart.result[0].meta.regularMarketPrice.toFixed(2);
+      const vix = +vixJson.chart.result[0].meta.regularMarketPrice.toFixed(2);
+      const ts = spxJson.chart.result[0].timestamp;
+      const dt = new Date(ts[ts.length-1] * 1000);
+      const dow = dt.getDay();
+      const toMon = dow === 5 ? 3 : dow === 6 ? 2 : 1;
+      const mon = new Date(dt); mon.setDate(dt.getDate() + toMon);
+      const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+      const fmt = d => (d.getMonth()+1) + '/' + d.getDate();
+      populateFields({ spx, vix, weekof: fmt(mon) + '–' + fmt(fri) });
       status.className = 'fetch-status ok';
-      status.textContent = `✓ Live: SPX ${spx.toLocaleString()} | VIX ${vix} | ${date}`;
-
-    } catch (err) {
+      status.textContent = '✓ Live: SPX ' + spx.toLocaleString() + ' | VIX ' + vix + ' | ' + dt.toISOString().slice(0,10);
+    } catch(err) {
       status.className = 'fetch-status err';
-      status.textContent = `✗ Fetch failed (${err.message}) — enter manually or check connection.`;
+      status.textContent = '✗ Fetch failed (' + err.message + ') — enter manually.';
     }
-
     btn.disabled = false;
     icon.textContent = '⟳';
     label.textContent = 'Auto-fetch latest SPX & VIX';
   }
 
   function populateFields(d) {
-    if (d.spx)    document.getElementById('spx').value    = d.spx;
-    if (d.vix)    document.getElementById('vix').value    = d.vix;
-    if (d.hv20)   document.getElementById('hv20').value   = d.hv20;
+    if (d.spx)    document.getElementById('spx').value = d.spx;
+    if (d.vix)    document.getElementById('vix').value = d.vix;
+    if (d.hv20)   document.getElementById('hv20').value = d.hv20;
     if (d.weekof) document.getElementById('weekof').value = d.weekof;
   }
 
-  // ── CALCULATE ─────────────────────────────────────────────────────────────
   function calculate() {
-    const spx    = parseFloat(document.getElementById('spx').value);
-    const vix    = parseFloat(document.getElementById('vix').value);
+    const spx = parseFloat(document.getElementById('spx').value);
+    const vix = parseFloat(document.getElementById('vix').value);
     const weekof = document.getElementById('weekof').value || '—';
-
-    if (isNaN(spx) || isNaN(vix)) {
-      alert('Please enter SPX Close and VIX.');
-      return;
-    }
-
+    if (isNaN(spx) || isNaN(vix)) { alert('Please enter SPX Close and VIX.'); return; }
     const isStressed = vix >= 17;
-    const k          = isStressed ? 1.80 : 1.60;
-    const wv         = (vix / 100) * Math.sqrt(5 / 252);
-    const lowMult    = 1 - k * wv;
-    const highMult   = 1 + k * wv;
-    const SPX WeeklyLow     = Math.round(spx * lowMult);
-    const SPX WeeklyHigh    = Math.round(spx * highMult);
-    const mid        = Math.round((SPX WeeklyLow + SPX WeeklyHigh) / 2);
-    const width      = SPX WeeklyHigh - SPX WeeklyLow;
-    const lowPct     = ((SPX WeeklyLow  - spx) / spx * 100).toFixed(1);
-    const highPct    = ((SPX WeeklyHigh - spx) / spx * 100).toFixed(1);
-    const regime     = isStressed ? 'Stressed' : 'Calm';
-
-    // Regime card
+    const k = isStressed ? 1.80 : 1.60;
+    const wv = (vix/100) * Math.sqrt(5/252);
+    const pviLow = Math.round(spx * (1 - k*wv));
+    const pviHigh = Math.round(spx * (1 + k*wv));
+    const mid = Math.round((pviLow+pviHigh)/2);
+    const width = pviHigh - pviLow;
     document.getElementById('regimeCard').style.display = 'block';
-    document.getElementById('regimeBadge').innerHTML = `
-      <div class="regime-badge ${isStressed ? 'regime-high' : 'regime-low'}">
-        <span class="dot ${isStressed ? 'dot-high' : 'dot-low'}"></span>
-        ${regime} — VIX ${vix.toFixed(2)} → k = ${k.toFixed(2)} | weekly vol = ${(wv*100).toFixed(2)}%
-      </div>`;
-    document.getElementById('effVol').textContent  = vix.toFixed(1) + '%';
-    document.getElementById('lowMult').textContent  = lowMult.toFixed(4);
-    document.getElementById('highMult').textContent = highMult.toFixed(4);
-
-    // Results
+    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → k=' + k.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%</div>';
+    document.getElementById('effVol').textContent = vix.toFixed(1) + '%';
+    document.getElementById('lowMult').textContent = (1-k*wv).toFixed(4);
+    document.getElementById('highMult').textContent = (1+k*wv).toFixed(4);
     document.getElementById('resultCard').style.display = 'block';
-    document.getElementById('resultWeek').textContent    = weekof;
-    document.getElementById('resLow').textContent        = SPX WeeklyLow.toLocaleString();
-    document.getElementById('resHigh').textContent       = SPX WeeklyHigh.toLocaleString();
-    document.getElementById('resLowPct').textContent     = lowPct + '% from close';
-    document.getElementById('resHighPct').textContent    = '+' + highPct + '% from close';
-    document.getElementById('resMid').textContent        = mid.toLocaleString();
-    document.getElementById('resWidth').textContent      = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
-
+    document.getElementById('resultWeek').textContent = weekof;
+    document.getElementById('resLow').textContent = pviLow.toLocaleString();
+    document.getElementById('resHigh').textContent = pviHigh.toLocaleString();
+    document.getElementById('resLowPct').textContent = ((pviLow-spx)/spx*100).toFixed(1) + '% from close';
+    document.getElementById('resHighPct').textContent = '+' + ((pviHigh-spx)/spx*100).toFixed(1) + '% from close';
+    document.getElementById('resMid').textContent = mid.toLocaleString();
+    document.getElementById('resWidth').textContent = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
     document.getElementById('saveBtn').style.display = 'block';
-    lastResult = { spx, vix, SPX WeeklyLow, SPX WeeklyHigh, weekof, regime, lowPct, highPct };
+    lastResult = { spx, vix, pviLow, pviHigh, weekof, regime: isStressed?'Stressed':'Calm' };
   }
 
-  // ── HISTORY ───────────────────────────────────────────────────────────────
   function saveToHistory() {
     if (!lastResult) return;
     history.unshift({ ...lastResult, savedAt: new Date().toLocaleDateString() });
-    if (history.length > 20) history = history.slice(0, 20);
-    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
+    if (history.length > 20) history = history.slice(0,20);
+    localStorage.setItem('pvi_history', JSON.stringify(history));
     renderHistory();
     const btn = document.getElementById('saveBtn');
     btn.textContent = '✓ Saved';
@@ -426,33 +255,20 @@
   }
 
   function deleteHistory(i) {
-    history.splice(i, 1);
-    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
+    history.splice(i,1);
+    localStorage.setItem('pvi_history', JSON.stringify(history));
     renderHistory();
   }
 
   function renderHistory() {
     const el = document.getElementById('historyContainer');
     if (!history.length) { el.innerHTML = '<div class="empty-state">No predictions saved yet.</div>'; return; }
-    el.innerHTML = history.map((h, i) => `
-      <div class="history-row">
-        <div class="history-date">${h.weekof || h.savedAt}</div>
-        <div class="history-close">${parseFloat(h.spx).toLocaleString()}</div>
-        <div class="history-low">${h.SPX WeeklyLow.toLocaleString()}</div>
-        <div class="history-high">${h.SPX WeeklyHigh.toLocaleString()}</div>
-        <button class="del-btn" onclick="deleteHistory(${i})">×</button>
-      </div>`).join('');
+    el.innerHTML = history.map((h,i) => '<div class="history-row"><div class="history-date">' + (h.weekof||h.savedAt) + '</div><div class="history-close">' + parseFloat(h.spx).toLocaleString() + '</div><div class="history-low">' + h.pviLow.toLocaleString() + '</div><div class="history-high">' + h.pviHigh.toLocaleString() + '</div><button class="del-btn" onclick="deleteHistory(' + i + ')">×</button></div>').join('');
   }
 
-  // ── INIT ──────────────────────────────────────────────────────────────────
   renderHistory();
-  loadLatestData();  // auto-load on every open
-
-  // Register service worker for offline support
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
-
+  loadLatestData();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
 </script>
 </body>
