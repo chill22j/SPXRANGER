@@ -137,13 +137,13 @@
   <div class="card">
     <div class="card-title">Formula Reference</div>
     <table class="mult-table">
-      <thead><tr><th>VIX</th><th>Regime</th><th>Vol Input</th><th>k</th><th>Confidence</th></tr></thead>
+      <thead><tr><th>VIX</th><th>Regime</th><th>Vol Input</th><th>k (Low/High)</th><th>Confidence</th></tr></thead>
       <tbody>
-        <tr><td>&lt; 17</td><td><span class="tag tag-low-v">Calm</span></td><td>VIX</td><td>1.60</td><td><span class="accuracy">High</span></td></tr>
-        <tr><td>≥ 17</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.80</td><td><span class="accuracy">High</span></td></tr>
+        <tr><td>&lt; 21</td><td><span class="tag tag-low-v">Calm</span></td><td>VIX</td><td>1.45 / 1.35</td><td><span class="accuracy">High</span></td></tr>
+        <tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.55 / 1.50</td><td><span class="accuracy">High</span></td></tr>
       </tbody>
     </table>
-    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 12 weeks of 2026 data. Avg error: ~33 pts Low, ~36 pts High. SPX only.</div>
+    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 13 weeks of 2026 data. Avg error: ~16 pts Low, ~19 pts High. SPX only.</div>
   </div>
   <div class="card">
     <div class="card-title">Prediction History</div>
