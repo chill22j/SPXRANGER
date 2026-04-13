@@ -96,7 +96,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.1</span></div>
+    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.2</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
   <div class="card">
@@ -219,18 +219,19 @@
     const vix = parseFloat(document.getElementById('vix').value);
     const weekof = document.getElementById('weekof').value || '—';
     if (isNaN(spx) || isNaN(vix)) { alert('Please enter SPX Close and VIX.'); return; }
-    const isStressed = vix >= 17;
-    const k = isStressed ? 1.80 : 1.60;
+    const isStressed = vix >= 21;
+    const kLow  = isStressed ? 1.55 : 1.45;
+    const kHigh = isStressed ? 1.50 : 1.35;
     const wv = (vix/100) * Math.sqrt(5/252);
-    const pviLow = Math.round(spx * (1 - k*wv));
-    const pviHigh = Math.round(spx * (1 + k*wv));
+    const pviLow = Math.round(spx * (1 - kLow*wv));
+    const pviHigh = Math.round(spx * (1 + kHigh*wv));
     const mid = Math.round((pviLow+pviHigh)/2);
     const width = pviHigh - pviLow;
     document.getElementById('regimeCard').style.display = 'block';
-    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → k=' + k.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%</div>';
+    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → kLow=' + kLow.toFixed(2) + ' kHigh=' + kHigh.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%</div>';
     document.getElementById('effVol').textContent = vix.toFixed(1) + '%';
-    document.getElementById('lowMult').textContent = (1-k*wv).toFixed(4);
-    document.getElementById('highMult').textContent = (1+k*wv).toFixed(4);
+    document.getElementById('lowMult').textContent  = (1-kLow*wv).toFixed(4);
+    document.getElementById('highMult').textContent = (1+kHigh*wv).toFixed(4);
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('resultWeek').textContent = weekof;
     document.getElementById('resLow').textContent = pviLow.toLocaleString();
