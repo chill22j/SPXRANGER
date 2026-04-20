@@ -134,7 +134,21 @@
       <div class="result-mid-box"><div class="result-mid-label">Range Width</div><div class="result-mid-val" id="resWidth">—</div></div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="optionsCard" style="display:none">
+    <div class="card-title">Options Flow — <span id="optionsExpiry">—</span></div>
+    <button class="options-fetch-btn" id="optionsFetchBtn" onclick="fetchOptionsFlow()">⟳ Fetch SPX Options Data</button>
+    <div class="options-grid">
+      <div class="options-stat"><div class="options-stat-label">Max Pain</div><div class="options-stat-val neutral" id="optMaxPain">—</div></div>
+      <div class="options-stat"><div class="options-stat-label">vs VIX Low</div><div class="options-stat-val" id="optVsLow">—</div></div>
+      <div class="options-stat"><div class="options-stat-label">Adj Low</div><div class="options-stat-val bearish" id="optAdjLow">—</div></div>
+    </div>
+    <div class="walls-row">
+      <div class="wall-box"><div class="wall-label">Put Walls ↓</div><div id="putWallsList"></div></div>
+      <div class="wall-box"><div class="wall-label">Call Walls ↑</div><div id="callWallsList"></div></div>
+    </div>
+    <div class="options-note" id="optionsNote"></div>
+  </div>
+    <div class="card">
     <div class="card-title">Formula Reference</div>
     <table class="mult-table">
       <thead><tr><th>VIX</th><th>Regime</th><th>Vol Input</th><th>k (Low/High)</th><th>Confidence</th></tr></thead>
