@@ -291,86 +291,83 @@ async function fetchOptionsFlow() {
   const spx = parseFloat(document.getElementById('spx').value);
   const pviLow = lastResult ? lastResult.pviLow : null;
   if (!spx) { alert('Run Calculate first.'); return; }
-  const btn = document.getElementById('optionsFetchBtn');
+
+  const btn  = document.getElementById('optionsFetchBtn');
   const note = document.getElementById('optionsNote');
-  btn.textContent = '⟳ Fetching options…';
   btn.disabled = true;
-  note.textContent = 'Contacting Yahoo Finance…';
-  try {
-    const PROXY = 'https://corsproxy.io/?';
-    let crumb = '';
-    await new Promise((resolve) => {
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-      iframe.src = 'https://finance.yahoo.com/quote/%5ESPX/options/';
-      iframe.onload = async () => {
-        await new Promise(r => setTimeout(r, 2500));
-        try { const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb',{credentials:'include'}); crumb = await cr.text(); } catch(e2) {}
-        try { document.body.removeChild(iframe); } catch(e3) {}
-        resolve();
-      };
-      iframe.onerror = () => { try { document.body.removeChild(iframe); } catch(e4) {} resolve(); };
-      document.body.appendChild(iframe);
-    });
-    if (!crumb || crumb.length < 3) {
-      const cr2 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v1/test/getcrumb'));
-      crumb = await cr2.text();
+  btn.textContent = '⟳ Opening options bridge…';
+  note.textContent = 'Fetching options data via Yahoo Finance…';
+
+  // Listen for result from bridge popup
+  const handler = function(e) {
+    if (e.data && e.data.type === 'OPTIONS_DATA') {
+      window.removeEventListener('message', handler);
+      renderOptionsData(e.data, pviLow);
+      btn.disabled = false;
+      btn.textContent = '⟳ Refresh Options Data';
+    } else if (e.data && e.data.type === 'OPTIONS_ERROR') {
+      window.removeEventListener('message', handler);
+      note.textContent = '✗ ' + e.data.error;
+      btn.disabled = false;
+      btn.textContent = '⟳ Refresh Options Data';
     }
-    note.textContent = 'Got session, fetching options chain…';
-    const d0 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb=' + encodeURIComponent(crumb))).then(r=>r.json());
-    const exps = d0?.optionChain?.result?.[0]?.expirationDates || [];
-    if (!exps.length) throw new Error('No expirations returned');
-    const now = Date.now()/1000;
-    const weekExps = exps.filter(ts => ts > now && ts < now + 8*86400);
-    const targetTs = weekExps[weekExps.length - 1];
-    if (!targetTs) throw new Error('No weekly expiry found');
-    const expDate = new Date(targetTs*1000);
-    document.getElementById('optionsExpiry').textContent = (expDate.getMonth()+1)+'/'+expDate.getDate()+' expiry';
-    const d1 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date='+targetTs+'&crumb='+encodeURIComponent(crumb))).then(r=>r.json());
-    const result = d1?.optionChain?.result?.[0];
-    if (!result) throw new Error('No options data');
-    const calls = result.options[0].calls || [];
-    const puts  = result.options[0].puts  || [];
-    const lo = spx*0.85, hi = spx*1.15;
-    const callOI = {}, putOI = {};
-    calls.filter(c=>c.openInterest>0&&c.strike>=lo&&c.strike<=hi).forEach(c=>callOI[c.strike]=c.openInterest);
-    puts.filter(p=>p.openInterest>0&&p.strike>=lo&&p.strike<=hi).forEach(p=>putOI[p.strike]=p.openInterest);
-    const allStrikes = [...new Set([...Object.keys(callOI),...Object.keys(putOI)].map(Number))].sort((a,b)=>a-b);
-    if (!allStrikes.length) throw new Error('No OI data in range');
-    let minPain=Infinity, maxPainStrike=null;
-    for (const s of allStrikes) {
-      const cp = Object.entries(callOI).reduce((sum,[k,oi])=>+k<s?sum+(s-+k)*oi:sum,0);
-      const pp = Object.entries(putOI).reduce((sum,[k,oi])=>+k>s?sum+(+k-s)*oi:sum,0);
-      if (cp+pp<minPain){minPain=cp+pp;maxPainStrike=s;}
+  };
+  window.addEventListener('message', handler);
+
+  // Open bridge popup
+  const bridgeUrl = '/SPXRANGER/options-bridge.html?spx=' + spx +
+    '&low=' + (pviLow || 0) +
+    '&origin=' + encodeURIComponent(window.location.origin);
+  const popup = window.open(bridgeUrl, 'optionsBridge', 'width=520,height=420,left=200,top=100');
+
+  // Timeout after 45 seconds
+  setTimeout(() => {
+    window.removeEventListener('message', handler);
+    if (btn.disabled) {
+      note.textContent = '✗ Timed out. Try clicking Refresh Options Data again.';
+      btn.disabled = false;
+      btn.textContent = '⟳ Refresh Options Data';
+      try { popup.close(); } catch(e) {}
     }
-    const topPuts  = Object.entries(putOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
-    const topCalls = Object.entries(callOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
-    let adjLow = pviLow, adjNote = '';
-    if (maxPainStrike && pviLow && maxPainStrike < pviLow) {
-      adjLow = maxPainStrike;
-      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') < VIX Low → anchoring Low down';
-    } else if (maxPainStrike && pviLow) {
-      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') ≥ VIX Low — no adjustment';
+  }, 45000);
+}
+
+function renderOptionsData(data, pviLow) {
+  const { maxPain, expiry, topPuts, topCalls } = data;
+  document.getElementById('optionsExpiry').textContent = expiry + ' expiry';
+
+  document.getElementById('optMaxPain').textContent = maxPain ? maxPain.toLocaleString() : '—';
+
+  const diff = pviLow && maxPain ? maxPain - pviLow : null;
+  const vsEl = document.getElementById('optVsLow');
+  vsEl.textContent = diff !== null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '—';
+  vsEl.className = 'options-stat-val ' + (diff === null ? 'neutral' : diff < 0 ? 'bearish' : 'bullish');
+
+  const adjLow = (maxPain && pviLow && maxPain < pviLow) ? maxPain : pviLow;
+  document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : '—';
+
+  document.getElementById('putWallsList').innerHTML = (topPuts || []).map(w =>
+    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
+    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
+  ).join('');
+  document.getElementById('callWallsList').innerHTML = (topCalls || []).map(w =>
+    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
+    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
+  ).join('');
+
+  let note = '';
+  if (maxPain && pviLow) {
+    if (maxPain < pviLow) {
+      note = 'Max pain (' + maxPain.toLocaleString() + ') < VIX Low → anchoring Low down';
+    } else {
+      note = 'Max pain (' + maxPain.toLocaleString() + ') ≥ VIX Low — no adjustment';
     }
-    const strongestPutBelow = Object.entries(putOI).filter(([k])=>+k<spx).sort(([,a],[,b])=>b-a)[0];
-    if (strongestPutBelow && +strongestPutBelow[0] < (adjLow||spx)-150) {
-      adjNote += ' | Large put wall at '+Number(strongestPutBelow[0]).toLocaleString()+' ('+Number(strongestPutBelow[1]).toLocaleString()+' OI)';
-    }
-    document.getElementById('optMaxPain').textContent = maxPainStrike ? maxPainStrike.toLocaleString() : '—';
-    const diff = pviLow && maxPainStrike ? maxPainStrike - pviLow : null;
-    const vsEl = document.getElementById('optVsLow');
-    vsEl.textContent = diff!==null ? (diff>0?'+':'')+diff.toLocaleString() : '—';
-    vsEl.className = 'options-stat-val '+(diff===null?'neutral':diff<0?'bearish':'bullish');
-    document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : '—';
-    document.getElementById('putWallsList').innerHTML = topPuts.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-    document.getElementById('callWallsList').innerHTML = topCalls.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-    note.textContent = adjNote;
-  } catch(e) {
-    note.textContent = '✗ Options fetch failed: ' + e.message;
-    console.error('options error:', e);
   }
-  btn.textContent = '⟳ Refresh Options Data';
-  btn.disabled = false;
+  const strongestPut = (topPuts || []).find(w => w.strike < (adjLow || 99999) - 150);
+  if (strongestPut) {
+    note += ' | Watch put wall at ' + strongestPut.strike.toLocaleString() + ' (' + strongestPut.oi.toLocaleString() + ' OI)';
+  }
+  document.getElementById('optionsNote').textContent = note;
 }
 </script>
 </body>
