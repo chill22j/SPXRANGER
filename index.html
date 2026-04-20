@@ -255,6 +255,7 @@
     document.getElementById('resMid').textContent = mid.toLocaleString();
     document.getElementById('resWidth').textContent = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
     document.getElementById('saveBtn').style.display = 'block';
+    document.getElementById('optionsCard').style.display = 'block';
     lastResult = { spx, vix, pviLow, pviHigh, weekof, regime: isStressed?'Stressed':'Calm' };
   }
 
@@ -371,35 +372,6 @@ async function fetchOptionsFlow() {
   }
   btn.textContent = '⟳ Refresh Options Data';
   btn.disabled = false;
-}
-
-function renderOptionsData(data, pviLow) {
-  const { maxPain, expiry, topPuts, topCalls } = data;
-  document.getElementById('optionsExpiry').textContent = expiry + ' expiry';
-  document.getElementById('optMaxPain').textContent = maxPain ? maxPain.toLocaleString() : '—';
-  const diff = pviLow && maxPain ? maxPain - pviLow : null;
-  const vsEl = document.getElementById('optVsLow');
-  vsEl.textContent = diff !== null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '—';
-  vsEl.className = 'options-stat-val ' + (diff === null ? 'neutral' : diff < 0 ? 'bearish' : 'bullish');
-  const adjLow = (maxPain && pviLow && maxPain < pviLow) ? maxPain : pviLow;
-  document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : '—';
-  document.getElementById('putWallsList').innerHTML = (topPuts || []).map(w =>
-    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
-    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
-  ).join('');
-  document.getElementById('callWallsList').innerHTML = (topCalls || []).map(w =>
-    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
-    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
-  ).join('');
-  let note = '';
-  if (maxPain && pviLow) {
-    note = maxPain < pviLow
-      ? 'Max pain (' + maxPain.toLocaleString() + ') < VIX Low → anchoring Low down'
-      : 'Max pain (' + maxPain.toLocaleString() + ') ≥ VIX Low — no adjustment';
-  }
-  const strongestPut = (topPuts || []).find(w => w.strike < (adjLow || 99999) - 150);
-  if (strongestPut) note += ' | Watch put wall at ' + strongestPut.strike.toLocaleString() + ' (' + strongestPut.oi.toLocaleString() + ' OI)';
-  document.getElementById('optionsNote').textContent = note;
 }
 </script>
 </body>
