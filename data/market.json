@@ -1,14 +1,48 @@
 {
   "spx": 7109.14,
   "vix": 18.87,
-  "hv20": 9.93,
+  "hv20": 17.83,
   "date": "2026-04-20",
   "weekof": "4/27-5/1",
-  "updated": "2026-04-20T21:16:01Z",
+  "updated": "2026-04-20T21:24:29Z",
   "options": {
-    "expiry": null,
-    "maxPain": null,
-    "topPuts": [],
-    "topCalls": []
+    "expiry": "4/29",
+    "maxPain": 6830,
+    "topPuts": [
+      {
+        "strike": 6470,
+        "oi": 3218
+      },
+      {
+        "strike": 6460,
+        "oi": 3199
+      },
+      {
+        "strike": 6925,
+        "oi": 2961
+      },
+      {
+        "strike": 6500,
+        "oi": 2565
+      }
+    ],
+    "topCalls": [
+      {
+        "strike": 6500,
+        "oi": 1957
+      },
+      {
+        "strike": 7225,
+        "oi": 1751
+      },
+      {
+        "strike": 6850,
+        "oi": 1101
+      },
+      {
+        "strike": 6600,
+        "oi": 756
+      }
+    ]
   }
 }
