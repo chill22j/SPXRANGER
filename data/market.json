@@ -4,44 +4,44 @@
   "hv20": 17.83,
   "date": "2026-04-20",
   "weekof": "4/27-5/1",
-  "updated": "2026-04-20T21:24:29Z",
+  "updated": "2026-04-20T21:46:07Z",
   "options": {
-    "expiry": "4/29",
-    "maxPain": 6830,
+    "expiry": "5/1",
+    "maxPain": 6925,
     "topPuts": [
       {
-        "strike": 6470,
-        "oi": 3218
+        "strike": 6800,
+        "oi": 4615
       },
       {
-        "strike": 6460,
-        "oi": 3199
+        "strike": 6650,
+        "oi": 3825
       },
       {
-        "strike": 6925,
-        "oi": 2961
+        "strike": 7080,
+        "oi": 2901
       },
       {
-        "strike": 6500,
-        "oi": 2565
+        "strike": 6100,
+        "oi": 2880
       }
     ],
     "topCalls": [
       {
-        "strike": 6500,
-        "oi": 1957
+        "strike": 7200,
+        "oi": 15184
       },
       {
-        "strike": 7225,
-        "oi": 1751
+        "strike": 7150,
+        "oi": 3340
       },
       {
-        "strike": 6850,
-        "oi": 1101
+        "strike": 7175,
+        "oi": 3323
       },
       {
-        "strike": 6600,
-        "oi": 756
+        "strike": 7000,
+        "oi": 3153
       }
     ]
   }
