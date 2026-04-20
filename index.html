@@ -96,7 +96,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.2</span></div>
+    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.3</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
   <div class="card">
@@ -285,6 +285,93 @@
   loadLatestData();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+
+async function fetchOptionsFlow() {
+  const spx = parseFloat(document.getElementById('spx').value);
+  const pviLow = lastResult ? lastResult.pviLow : null;
+  if (!spx) { alert('Run Calculate first.'); return; }
+  const btn = document.getElementById('optionsFetchBtn');
+  const note = document.getElementById('optionsNote');
+  btn.textContent = '⟳ Fetching options…';
+  btn.disabled = true;
+  note.textContent = 'Contacting Yahoo Finance…';
+  try {
+    const PROXY = 'https://corsproxy.io/?';
+    let crumb = '';
+    await new Promise((resolve) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+      iframe.src = 'https://finance.yahoo.com/quote/%5ESPX/options/';
+      iframe.onload = async () => {
+        await new Promise(r => setTimeout(r, 2500));
+        try { const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb',{credentials:'include'}); crumb = await cr.text(); } catch(e2) {}
+        try { document.body.removeChild(iframe); } catch(e3) {}
+        resolve();
+      };
+      iframe.onerror = () => { try { document.body.removeChild(iframe); } catch(e4) {} resolve(); };
+      document.body.appendChild(iframe);
+    });
+    if (!crumb || crumb.length < 3) {
+      const cr2 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v1/test/getcrumb'));
+      crumb = await cr2.text();
+    }
+    note.textContent = 'Got session, fetching options chain…';
+    const d0 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb=' + encodeURIComponent(crumb))).then(r=>r.json());
+    const exps = d0?.optionChain?.result?.[0]?.expirationDates || [];
+    if (!exps.length) throw new Error('No expirations returned');
+    const now = Date.now()/1000;
+    const weekExps = exps.filter(ts => ts > now && ts < now + 8*86400);
+    const targetTs = weekExps[weekExps.length - 1];
+    if (!targetTs) throw new Error('No weekly expiry found');
+    const expDate = new Date(targetTs*1000);
+    document.getElementById('optionsExpiry').textContent = (expDate.getMonth()+1)+'/'+expDate.getDate()+' expiry';
+    const d1 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date='+targetTs+'&crumb='+encodeURIComponent(crumb))).then(r=>r.json());
+    const result = d1?.optionChain?.result?.[0];
+    if (!result) throw new Error('No options data');
+    const calls = result.options[0].calls || [];
+    const puts  = result.options[0].puts  || [];
+    const lo = spx*0.85, hi = spx*1.15;
+    const callOI = {}, putOI = {};
+    calls.filter(c=>c.openInterest>0&&c.strike>=lo&&c.strike<=hi).forEach(c=>callOI[c.strike]=c.openInterest);
+    puts.filter(p=>p.openInterest>0&&p.strike>=lo&&p.strike<=hi).forEach(p=>putOI[p.strike]=p.openInterest);
+    const allStrikes = [...new Set([...Object.keys(callOI),...Object.keys(putOI)].map(Number))].sort((a,b)=>a-b);
+    if (!allStrikes.length) throw new Error('No OI data in range');
+    let minPain=Infinity, maxPainStrike=null;
+    for (const s of allStrikes) {
+      const cp = Object.entries(callOI).reduce((sum,[k,oi])=>+k<s?sum+(s-+k)*oi:sum,0);
+      const pp = Object.entries(putOI).reduce((sum,[k,oi])=>+k>s?sum+(+k-s)*oi:sum,0);
+      if (cp+pp<minPain){minPain=cp+pp;maxPainStrike=s;}
+    }
+    const topPuts  = Object.entries(putOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
+    const topCalls = Object.entries(callOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
+    let adjLow = pviLow, adjNote = '';
+    if (maxPainStrike && pviLow && maxPainStrike < pviLow) {
+      adjLow = maxPainStrike;
+      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') < VIX Low → anchoring Low down';
+    } else if (maxPainStrike && pviLow) {
+      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') ≥ VIX Low — no adjustment';
+    }
+    const strongestPutBelow = Object.entries(putOI).filter(([k])=>+k<spx).sort(([,a],[,b])=>b-a)[0];
+    if (strongestPutBelow && +strongestPutBelow[0] < (adjLow||spx)-150) {
+      adjNote += ' | Large put wall at '+Number(strongestPutBelow[0]).toLocaleString()+' ('+Number(strongestPutBelow[1]).toLocaleString()+' OI)';
+    }
+    document.getElementById('optMaxPain').textContent = maxPainStrike ? maxPainStrike.toLocaleString() : '—';
+    const diff = pviLow && maxPainStrike ? maxPainStrike - pviLow : null;
+    const vsEl = document.getElementById('optVsLow');
+    vsEl.textContent = diff!==null ? (diff>0?'+':'')+diff.toLocaleString() : '—';
+    vsEl.className = 'options-stat-val '+(diff===null?'neutral':diff<0?'bearish':'bullish');
+    document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : '—';
+    document.getElementById('putWallsList').innerHTML = topPuts.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
+    document.getElementById('callWallsList').innerHTML = topCalls.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
+    note.textContent = adjNote;
+  } catch(e) {
+    note.textContent = '✗ Options fetch failed: ' + e.message;
+    console.error('options error:', e);
+  }
+  btn.textContent = '⟳ Refresh Options Data';
+  btn.disabled = false;
+}
 </script>
 </body>
 </html>
