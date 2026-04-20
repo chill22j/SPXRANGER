@@ -107,9 +107,7 @@
       <div class="input-group"><label>HV20 % (optional)</label><input type="number" id="hv20" placeholder="19.55" step="0.1" inputmode="decimal"></div>
       <div class="input-group"><label>Week of</label><input type="text" id="weekof" placeholder="4/13–4/17"></div>
     </div>
-    <button class="fetch-btn" id="fetchBtn" onclick="fetchMarketData()">
-      <span id="fetchIcon">⟳</span><span id="fetchLabel">Fetch live prices (not for prediction use)</span>
-    </button>
+    <div class="fetch-btn" style="cursor:default;opacity:0.55;justify-content:center;"><span>📅 Loaded from Saturday auto-update</span></div>
     <div class="fetch-status" id="fetchStatus"></div>
     <button class="calc-btn" onclick="calculate()">Calculate SPX Weekly Ranges</button>
     <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
@@ -136,7 +134,7 @@
   </div>
   <div class="card" id="optionsCard" style="display:none">
     <div class="card-title">Options Flow — <span id="optionsExpiry">—</span></div>
-    <button class="options-fetch-btn" id="optionsFetchBtn" onclick="fetchOptionsFlow()">⟳ Fetch SPX Options Data</button>
+    <div class="options-fetch-btn" id="optionsFetchBtn" style="cursor:default;"></div>
     <div class="options-grid">
       <div class="options-stat"><div class="options-stat-label">Max Pain</div><div class="options-stat-val neutral" id="optMaxPain">—</div></div>
       <div class="options-stat"><div class="options-stat-label">vs VIX Low</div><div class="options-stat-val" id="optVsLow">—</div></div>
