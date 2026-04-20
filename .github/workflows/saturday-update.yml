@@ -19,32 +19,37 @@ jobs:
           python3 << 'PYEOF'
           import yfinance as yf
           import json, math, datetime
+          import pandas as pd
 
-          # Pull 30 days of history for SPX and VIX
-          spx_hist = yf.Ticker("^GSPC").history(period="30d")
-          vix_hist = yf.Ticker("^VIX").history(period="30d")
+          # Download last 10 days of data with auto_adjust=False to get raw closes
+          spx_hist = yf.download("^GSPC", period="10d", auto_adjust=False, progress=False)
+          vix_hist = yf.download("^VIX",  period="10d", auto_adjust=False, progress=False)
 
-          # Find the most recent Friday in history (the actual Friday close)
-          last_friday_idx = None
-          for idx_dt in reversed(spx_hist.index):
-              if idx_dt.weekday() == 4:  # 4 = Friday
-                  last_friday_idx = idx_dt
-                  break
+          # Print all available rows so we can see what yfinance returns
+          print("SPX rows:")
+          print(spx_hist[["Close"]].tail(5).to_string())
+          print("VIX rows:")
+          print(vix_hist[["Close"]].tail(5).to_string())
 
-          if not last_friday_idx:
-              last_friday_idx = spx_hist.index[-1]
+          # Find the most recent Friday row
+          def get_last_friday_row(df):
+              for dt in reversed(df.index):
+                  if dt.weekday() == 4:  # Friday
+                      return dt, float(df.loc[dt, "Close"].iloc[0] if hasattr(df.loc[dt, "Close"], "iloc") else df.loc[dt, "Close"])
+              # Fallback: last available row
+              dt = df.index[-1]
+              return dt, float(df.loc[dt, "Close"].iloc[0] if hasattr(df.loc[dt, "Close"], "iloc") else df.loc[dt, "Close"])
 
-          last_friday = last_friday_idx.to_pydatetime()
-          date_str = last_friday.strftime("%Y-%m-%d")
+          fri_dt, spx = get_last_friday_row(spx_hist)
+          _, vix = get_last_friday_row(vix_hist)
+          spx = round(spx, 2)
+          vix = round(vix, 2)
+          date_str = fri_dt.strftime("%Y-%m-%d")
+          print(f"Using Friday: {date_str}  SPX={spx}  VIX={vix}")
 
-          # Use the CLOSING price from that specific Friday — not live price
-          spx = round(float(spx_hist.loc[last_friday_idx, "Close"]), 2)
-          vix = round(float(vix_hist.loc[last_friday_idx, "Close"]), 2) if last_friday_idx in vix_hist.index else round(float(vix_hist["Close"].iloc[-1]), 2)
-
-          print(f"Last Friday: {date_str}  SPX close={spx}  VIX close={vix}")
-
-          # HV20 from recent closes
-          closes = spx_hist["Close"].tolist()
+          # HV20 from last 30 days
+          hist30 = yf.download("^GSPC", period="30d", auto_adjust=False, progress=False)
+          closes = hist30["Close"].squeeze().dropna().tolist()
           log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
           if len(log_rets) >= 2:
               mean = sum(log_rets)/len(log_rets)
@@ -53,11 +58,12 @@ jobs:
           else:
               hv20 = None
 
-          # Coming week = Mon through Fri after last Friday
+          # Coming week dates
+          last_friday = fri_dt.to_pydatetime()
           mon = last_friday + datetime.timedelta(days=3)
-          fri = last_friday + datetime.timedelta(days=7)
-          weekof = f"{mon.month}/{mon.day}-{fri.month}/{fri.day}"
-          print(f"Coming week: {mon.date()} to {fri.date()}  weekof={weekof}")
+          fri_next = last_friday + datetime.timedelta(days=7)
+          weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
+          print(f"weekof={weekof}  coming Mon={mon.date()}  Fri={fri_next.date()}")
 
           max_pain = None
           top_puts = []
@@ -67,9 +73,8 @@ jobs:
           try:
               spx_opts = yf.Ticker("^SPX")
               expirations = list(spx_opts.options)
-              print(f"Available expirations (first 8): {expirations[:8]}")
+              print(f"Expirations (first 8): {expirations[:8]}")
 
-              # Find last expiry within the coming Mon-Fri window
               target_exp = None
               for exp in expirations:
                   exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
@@ -79,36 +84,36 @@ jobs:
 
               if not target_exp and expirations:
                   target_exp = expirations[0]
-                  print("No match in coming week, using first available")
+                  print("Fallback: using first available expiry")
 
-              print(f"Using expiry: {target_exp}")
+              print(f"Target expiry: {target_exp}")
               exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
               options_expiry = f"{exp_dt.month}/{exp_dt.day}"
 
               chain = spx_opts.option_chain(target_exp)
               calls_df = chain.calls
-              puts_df = chain.puts
-              print(f"Calls: {len(calls_df)} | Puts: {len(puts_df)}")
+              puts_df  = chain.puts
+              print(f"Calls: {len(calls_df)}  Puts: {len(puts_df)}")
 
               lo, hi = spx * 0.85, spx * 1.15
               calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
-              puts_df = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
+              puts_df  = puts_df[ (puts_df["strike"]  >= lo) & (puts_df["strike"]  <= hi) & (puts_df["openInterest"]  > 0)]
 
               call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
-              put_oi = dict(zip(puts_df["strike"].tolist(), puts_df["openInterest"].tolist()))
+              put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
               all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
               print(f"Strikes in range: {len(all_strikes)}")
 
               min_pain = float("inf")
               for s in all_strikes:
                   cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
-                  pp = sum((k-s)*oi for k,oi in put_oi.items() if k > s)
+                  pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
                   if cp+pp < min_pain:
                       min_pain = cp+pp
                       max_pain = int(s)
 
               print(f"Max pain: {max_pain}")
-              top_puts = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()], key=lambda x:-x["oi"])[:4]
+              top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
               top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
 
           except Exception as e:
@@ -123,7 +128,7 @@ jobs:
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-          print(f"Done: SPX={spx} VIX={vix} maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
+          print(f"SAVED: SPX={spx} VIX={vix} maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
           PYEOF
 
       - name: Commit
