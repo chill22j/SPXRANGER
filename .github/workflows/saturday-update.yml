@@ -26,9 +26,22 @@ jobs:
           vix = round(vix_ticker.fast_info["lastPrice"], 2)
           hist = spx_ticker.history(period="30d")
           closes = hist["Close"].tolist()
-          last_dt = hist.index[-1].to_pydatetime()
-          date_str = last_dt.strftime("%Y-%m-%d")
 
+          # Always use the most recent FRIDAY close as the base date
+          # The workflow runs Saturday, but may also run mid-week (workflow_dispatch)
+          # Find last Friday in the history index
+          last_friday = None
+          for idx_dt in reversed(hist.index):
+              if idx_dt.weekday() == 4:  # 4 = Friday
+                  last_friday = idx_dt.to_pydatetime()
+                  break
+          if not last_friday:
+              last_friday = hist.index[-1].to_pydatetime()
+
+          date_str = last_friday.strftime("%Y-%m-%d")
+          print(f"Last Friday: {date_str}")
+
+          # HV20 from recent closes
           log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
           if len(log_rets) >= 2:
               mean = sum(log_rets)/len(log_rets)
@@ -37,10 +50,9 @@ jobs:
           else:
               hv20 = None
 
-          dow = last_dt.weekday()
-          days_to_mon = (7-dow)%7 or 7
-          mon = last_dt + datetime.timedelta(days=days_to_mon)
-          fri = mon + datetime.timedelta(days=4)
+          # Coming week = Mon-Fri after last Friday
+          mon = last_friday + datetime.timedelta(days=3)  # Fri + 3 = Mon
+          fri = last_friday + datetime.timedelta(days=7)  # Fri + 7 = next Fri
           weekof = f"{mon.month}/{mon.day}-{fri.month}/{fri.day}"
           print(f"SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
           print(f"Coming week: {mon.date()} to {fri.date()}")
@@ -61,7 +73,7 @@ jobs:
                   exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
                   days_from_mon = (exp_date - mon.date()).days
                   if 0 <= days_from_mon <= 4:
-                      target_exp = exp
+                      target_exp = exp  # keep overwriting to get LAST in week
 
               if not target_exp and expirations:
                   target_exp = expirations[0]
@@ -109,7 +121,7 @@ jobs:
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-          print(f"Done: maxPain={max_pain} expiry={options_expiry}")
+          print(f"Done: maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
           PYEOF
 
       - name: Commit
