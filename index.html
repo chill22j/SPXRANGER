@@ -184,6 +184,18 @@
           renderOptionsData({maxPain:d.options.maxPain,expiry:d.options.expiry||'',topPuts:d.options.topPuts||[],topCalls:d.options.topCalls||[]}, null);
           document.getElementById('optionsFetchBtn').textContent = '✓ Options loaded from Saturday update';
         }
+    
+        // Auto-load options data if present in market.json
+        if (d.options && d.options.maxPain) {
+          document.getElementById('optionsCard').style.display = 'block';
+          renderOptionsData({
+            maxPain: d.options.maxPain,
+            expiry:  d.options.expiry  || '',
+            topPuts: d.options.topPuts  || [],
+            topCalls:d.options.topCalls || []
+          }, null);
+          document.getElementById('optionsFetchBtn').textContent = '✓ Loaded from Saturday update';
+        }
     } catch(e) { fetchMarketData(true); }
   }
 
