@@ -178,6 +178,12 @@
       const updated = d.updated ? new Date(d.updated).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : d.date;
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded: SPX ' + d.spx.toLocaleString() + ' | VIX ' + d.vix + ' | as of ' + updated;
+    
+        if (d.options && d.options.maxPain) {
+          document.getElementById('optionsCard').style.display = 'block';
+          renderOptionsData({maxPain:d.options.maxPain,expiry:d.options.expiry||'',topPuts:d.options.topPuts||[],topCalls:d.options.topCalls||[]}, null);
+          document.getElementById('optionsFetchBtn').textContent = '✓ Options loaded from Saturday update';
+        }
     } catch(e) { fetchMarketData(true); }
   }
 
