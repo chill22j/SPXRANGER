@@ -391,6 +391,37 @@ async function fetchOptionsFlow() {
   btn.textContent = '⟳ Refresh Options Data';
   btn.disabled = false;
 }
+
+function renderOptionsData(data, pviLow) {
+  const { maxPain, expiry, topPuts, topCalls } = data;
+  if (expiry) document.getElementById('optionsExpiry').textContent = expiry + ' expiry';
+  document.getElementById('optMaxPain').textContent = maxPain ? maxPain.toLocaleString() : '—';
+  const diff = pviLow && maxPain ? maxPain - pviLow : null;
+  const vsEl = document.getElementById('optVsLow');
+  vsEl.textContent = diff !== null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '—';
+  vsEl.className = 'options-stat-val ' + (diff === null ? 'neutral' : diff < 0 ? 'bearish' : 'bullish');
+  const adjLow = (maxPain && pviLow && maxPain < pviLow) ? maxPain : pviLow;
+  document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : (maxPain ? maxPain.toLocaleString() : '—');
+  document.getElementById('putWallsList').innerHTML = (topPuts || []).map(w =>
+    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
+    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
+  ).join('');
+  document.getElementById('callWallsList').innerHTML = (topCalls || []).map(w =>
+    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
+    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
+  ).join('');
+  let note = '';
+  if (maxPain && pviLow) {
+    note = maxPain < pviLow
+      ? 'Max pain (' + maxPain.toLocaleString() + ') < VIX Low → anchoring Low down'
+      : 'Max pain (' + maxPain.toLocaleString() + ') ≥ VIX Low — no adjustment';
+  } else if (maxPain) {
+    note = 'Max pain: ' + maxPain.toLocaleString() + ' | Run Calculate to compare vs VIX Low';
+  }
+  const strongestPut = (topPuts || []).filter(w => !pviLow || w.strike < pviLow - 150)[0];
+  if (strongestPut) note += ' | Watch put wall at ' + strongestPut.strike.toLocaleString() + ' (' + strongestPut.oi.toLocaleString() + ' OI)';
+  document.getElementById('optionsNote').textContent = note;
+}
 </script>
 </body>
 </html>
