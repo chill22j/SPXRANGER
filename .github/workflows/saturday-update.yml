@@ -2,84 +2,159 @@ name: Saturday Market Update
 
 on:
   schedule:
-    # Every Saturday at 9pm ET (01:00 UTC Sunday)
     - cron: '0 1 * * 0'
-  workflow_dispatch: # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   update-market-data:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Fetch SPX and VIX closes
-        id: fetch
+      - name: Fetch market data and calculate max pain
         run: |
           python3 << 'PYEOF'
-          import urllib.request, json, math, datetime
+          import urllib.request, urllib.parse, json, math, datetime, time
 
-          def fetch_yahoo(symbol):
-              url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
-              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-              with urllib.request.urlopen(req) as r:
+          HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+          def fetch_json(url, headers=None):
+              req = urllib.request.Request(url, headers=headers or HEADERS)
+              with urllib.request.urlopen(req, timeout=15) as r:
                   return json.loads(r.read())
 
-          spx_data = fetch_yahoo("%5EGSPC")
-          vix_data = fetch_yahoo("%5EVIX")
+          # ── SPX and VIX prices ───────────────────────────────────────
+          spx_data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d")
+          vix_data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d")
 
-          spx_meta = spx_data["chart"]["result"][0]["meta"]
-          vix_meta = vix_data["chart"]["result"][0]["meta"]
+          spx = round(spx_data["chart"]["result"][0]["meta"]["regularMarketPrice"], 2)
+          vix = round(vix_data["chart"]["result"][0]["meta"]["regularMarketPrice"], 2)
 
-          spx = round(spx_meta["regularMarketPrice"], 2)
-          vix = round(vix_meta["regularMarketPrice"], 2)
-
-          # Get date from last timestamp
           timestamps = spx_data["chart"]["result"][0]["timestamp"]
           closes     = spx_data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
           last_ts    = timestamps[-1]
           close_dt   = datetime.datetime.utcfromtimestamp(last_ts)
           date_str   = close_dt.strftime("%Y-%m-%d")
 
-          # Calculate HV20 from daily closes
-          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes)) if closes[i] and closes[i-1]]
-          if len(log_rets) >= 5:
-              # Use available data, annualised
-              mean = sum(log_rets) / len(log_rets)
-              var  = sum((r - mean)**2 for r in log_rets) / (len(log_rets) - 1)
-              hv20 = round(math.sqrt(var) * math.sqrt(252) * 100, 2)
+          # HV20
+          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
+          if len(log_rets) >= 2:
+              mean = sum(log_rets)/len(log_rets)
+              var  = sum((r-mean)**2 for r in log_rets)/(len(log_rets)-1)
+              hv20 = round(math.sqrt(var)*math.sqrt(252)*100, 2)
           else:
               hv20 = None
 
-          # Next Mon-Fri week label
-          dow = close_dt.weekday()  # Mon=0 … Sun=6
-          days_to_mon = (7 - dow) % 7 or 7
+          # Week of string
+          dow        = close_dt.weekday()
+          days_to_mon = (7-dow)%7 or 7
           mon = close_dt + datetime.timedelta(days=days_to_mon)
           fri = mon + datetime.timedelta(days=4)
-          weekof = f"{mon.month}/{mon.day}–{fri.month}/{fri.day}"
+          weekof = f"{mon.month}/{mon.day}-{fri.month}/{fri.day}"
 
+          print(f"SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
+
+          # ── Options chain and max pain ────────────────────────────────
+          # Step 1: get crumb (no browser session needed from server side)
+          crumb = None
+          try:
+              crumb_req = urllib.request.Request(
+                  "https://query1.finance.yahoo.com/v1/test/getcrumb",
+                  headers={**HEADERS, "Cookie": ""}
+              )
+              with urllib.request.urlopen(crumb_req, timeout=10) as r:
+                  crumb = r.read().decode()
+              print(f"Crumb: {crumb[:10]}...")
+          except Exception as e:
+              print(f"Crumb error: {e}")
+
+          max_pain = None
+          top_puts = []
+          top_calls = []
+          options_expiry = None
+
+          if crumb:
+              try:
+                  # Step 2: get available expirations
+                  exp_url = f"https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb={urllib.parse.quote(crumb)}"
+                  exp_data = fetch_json(exp_url)
+                  exps = exp_data["optionChain"]["result"][0]["expirationDates"]
+
+                  # Find last expiry within next 8 days (end of coming week)
+                  now_ts = time.time()
+                  week_exps = [ts for ts in exps if now_ts < ts < now_ts + 8*86400]
+                  target_ts = week_exps[-1] if week_exps else None
+
+                  if target_ts:
+                      exp_date = datetime.datetime.utcfromtimestamp(target_ts)
+                      options_expiry = f"{exp_date.month}/{exp_date.day}"
+                      print(f"Options expiry: {exp_date.strftime('%Y-%m-%d')}")
+
+                      # Step 3: fetch options chain
+                      chain_url = f"https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date={target_ts}&crumb={urllib.parse.quote(crumb)}"
+                      chain_data = fetch_json(chain_url)
+                      result = chain_data["optionChain"]["result"][0]
+                      calls = result["options"][0].get("calls", [])
+                      puts  = result["options"][0].get("puts",  [])
+                      print(f"Calls: {len(calls)} | Puts: {len(puts)}")
+
+                      # Filter to ±15% of SPX
+                      lo, hi = spx * 0.85, spx * 1.15
+                      call_oi = {c["strike"]: c["openInterest"] for c in calls if c.get("openInterest",0) > 0 and lo <= c["strike"] <= hi}
+                      put_oi  = {p["strike"]: p["openInterest"] for p in puts  if p.get("openInterest",0) > 0 and lo <= p["strike"] <= hi}
+
+                      all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
+                      print(f"Strikes in range: {len(all_strikes)}")
+
+                      # Calculate max pain
+                      min_pain = float("inf")
+                      for s in all_strikes:
+                          cp = sum((s - k) * oi for k, oi in call_oi.items() if k < s)
+                          pp = sum((k - s) * oi for k, oi in put_oi.items()  if k > s)
+                          total = cp + pp
+                          if total < min_pain:
+                              min_pain = total
+                              max_pain = s
+
+                      print(f"Max pain: {max_pain}")
+
+                      # Top 4 put and call walls
+                      top_puts  = sorted(put_oi.items(),  key=lambda x: -x[1])[:4]
+                      top_calls = sorted(call_oi.items(), key=lambda x: -x[1])[:4]
+                      top_puts  = [{"strike": k, "oi": v} for k, v in top_puts]
+                      top_calls = [{"strike": k, "oi": v} for k, v in top_calls]
+
+              except Exception as e:
+                  print(f"Options error: {e}")
+
+          # ── Write market.json ─────────────────────────────────────────
           payload = {
-              "spx": spx,
-              "vix": vix,
-              "hv20": hv20,
-              "date": date_str,
-              "weekof": weekof,
-              "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+              "spx":     spx,
+              "vix":     vix,
+              "hv20":    hv20,
+              "date":    date_str,
+              "weekof":  weekof,
+              "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "options": {
+                  "expiry":   options_expiry,
+                  "maxPain":  max_pain,
+                  "topPuts":  top_puts,
+                  "topCalls": top_calls
+              }
           }
 
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
 
-          print(f"Updated: SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
+          print(f"Saved: {json.dumps(payload, indent=2)}")
           PYEOF
 
-      - name: Commit updated market data
+      - name: Commit
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json
-          git diff --staged --quiet || git commit -m "chore: Saturday market update $(date -u '+%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "chore: Saturday market update"
           git push
