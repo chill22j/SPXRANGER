@@ -18,40 +18,33 @@ jobs:
           pip install yfinance --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
-          import json, math, datetime, time
+          import json, math, datetime
 
-          # ── SPX and VIX prices ────────────────────────────────────────
           spx_ticker = yf.Ticker("^GSPC")
           vix_ticker = yf.Ticker("^VIX")
-
           spx = round(spx_ticker.fast_info["lastPrice"], 2)
           vix = round(vix_ticker.fast_info["lastPrice"], 2)
-
           hist = spx_ticker.history(period="30d")
           closes = hist["Close"].tolist()
           last_dt = hist.index[-1].to_pydatetime()
           date_str = last_dt.strftime("%Y-%m-%d")
 
-          # HV20
-          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes)) if closes[i] and closes[i-1]]
+          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
           if len(log_rets) >= 2:
               mean = sum(log_rets)/len(log_rets)
-              var  = sum((r-mean)**2 for r in log_rets)/(len(log_rets)-1)
+              var = sum((r-mean)**2 for r in log_rets)/(len(log_rets)-1)
               hv20 = round(math.sqrt(var)*math.sqrt(252)*100, 2)
           else:
               hv20 = None
 
-          # Week of (coming Mon-Fri)
           dow = last_dt.weekday()
           days_to_mon = (7-dow)%7 or 7
           mon = last_dt + datetime.timedelta(days=days_to_mon)
           fri = mon + datetime.timedelta(days=4)
           weekof = f"{mon.month}/{mon.day}-{fri.month}/{fri.day}"
-
           print(f"SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
-          print(f"Coming week: Mon {mon.date()} - Fri {fri.date()}")
+          print(f"Coming week: {mon.date()} to {fri.date()}")
 
-          # ── Options chain for the coming week's Friday expiry ─────────
           max_pain = None
           top_puts = []
           top_calls = []
@@ -59,95 +52,64 @@ jobs:
 
           try:
               spx_opts = yf.Ticker("^SPX")
-              expirations = spx_opts.options
-              print(f"Available expirations (first 8): {list(expirations[:8])}")
+              expirations = list(spx_opts.options)
+              print(f"Available expirations (first 8): {expirations[:8]}")
 
-              # Target: the Friday of the COMING week (same as fri computed above)
-              # yfinance returns expirations as strings like "2026-04-24"
-              # Find the expiry closest to our target Friday
-              target_fri_str = fri.strftime("%Y-%m-%d")
-              print(f"Target Friday: {target_fri_str}")
-
-              # First look for exact Friday match
+              # Find last expiry within the coming Mon-Fri window
               target_exp = None
-              if target_fri_str in expirations:
-                  target_exp = target_fri_str
-                  print(f"Exact Friday match: {target_exp}")
-              else:
-                  # Look within ±2 days of target Friday (handles Thu settlement)
-                  for exp in expirations:
-                      exp_dt = datetime.datetime.strptime(exp, "%Y-%m-%d")
-                      diff = abs((exp_dt.date() - fri.date()).days)
-                      if diff <= 2:
-                          target_exp = exp
-                          print(f"Near-Friday match: {target_exp} (diff={diff} days)")
-                          break
+              for exp in expirations:
+                  exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
+                  days_from_mon = (exp_date - mon.date()).days
+                  if 0 <= days_from_mon <= 4:
+                      target_exp = exp
 
-              if not target_exp:
-                  print("No match found — using first available expiry")
+              if not target_exp and expirations:
                   target_exp = expirations[0]
+                  print("No match in coming week, using first available")
 
+              print(f"Using expiry: {target_exp}")
               exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
               options_expiry = f"{exp_dt.month}/{exp_dt.day}"
-              print(f"Using expiry: {target_exp} -> {options_expiry}")
 
               chain = spx_opts.option_chain(target_exp)
               calls_df = chain.calls
-              puts_df  = chain.puts
-
+              puts_df = chain.puts
               print(f"Calls: {len(calls_df)} | Puts: {len(puts_df)}")
 
-              # Filter +-15% of SPX
               lo, hi = spx * 0.85, spx * 1.15
               calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
-              puts_df  = puts_df[(puts_df["strike"]  >= lo) & (puts_df["strike"]  <= hi) & (puts_df["openInterest"]  > 0)]
+              puts_df = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
 
               call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
-              put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
-
+              put_oi = dict(zip(puts_df["strike"].tolist(), puts_df["openInterest"].tolist()))
               all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
               print(f"Strikes in range: {len(all_strikes)}")
 
-              # Max pain
               min_pain = float("inf")
               for s in all_strikes:
-                  cp = sum((s - k) * oi for k, oi in call_oi.items() if k < s)
-                  pp = sum((k - s) * oi for k, oi in put_oi.items()  if k > s)
-                  if cp + pp < min_pain:
-                      min_pain = cp + pp
+                  cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
+                  pp = sum((k-s)*oi for k,oi in put_oi.items() if k > s)
+                  if cp+pp < min_pain:
+                      min_pain = cp+pp
                       max_pain = int(s)
 
               print(f"Max pain: {max_pain}")
-
-              top_puts  = sorted([{"strike": int(k), "oi": int(v)} for k,v in put_oi.items()],  key=lambda x: -x["oi"])[:4]
-              top_calls = sorted([{"strike": int(k), "oi": int(v)} for k,v in call_oi.items()], key=lambda x: -x["oi"])[:4]
-              print(f"Top puts: {top_puts[:2]}")
-              print(f"Top calls: {top_calls[:2]}")
+              top_puts = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()], key=lambda x:-x["oi"])[:4]
+              top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
 
           except Exception as e:
               print(f"Options error: {e}")
               import traceback; traceback.print_exc()
 
-          # ── Write market.json ─────────────────────────────────────────
           payload = {
-              "spx":    spx,
-              "vix":    vix,
-              "hv20":   hv20,
-              "date":   date_str,
-              "weekof": weekof,
+              "spx": spx, "vix": vix, "hv20": hv20,
+              "date": date_str, "weekof": weekof,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "options": {
-                  "expiry":   options_expiry,
-                  "maxPain":  max_pain,
-                  "topPuts":  top_puts,
-                  "topCalls": top_calls
-              }
+              "options": {"expiry": options_expiry, "maxPain": max_pain, "topPuts": top_puts, "topCalls": top_calls}
           }
-
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-
-          print(f"Done: SPX={spx} VIX={vix} maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
+          print(f"Done: maxPain={max_pain} expiry={options_expiry}")
           PYEOF
 
       - name: Commit
