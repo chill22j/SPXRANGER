@@ -393,34 +393,23 @@ async function fetchOptionsFlow() {
 }
 
 function renderOptionsData(data, pviLow) {
-  const { maxPain, expiry, topPuts, topCalls } = data;
-  if (expiry) document.getElementById('optionsExpiry').textContent = expiry + ' expiry';
-  document.getElementById('optMaxPain').textContent = maxPain ? maxPain.toLocaleString() : '—';
-  const diff = pviLow && maxPain ? maxPain - pviLow : null;
+  const mp = data.maxPain, exp = data.expiry, tp = data.topPuts||[], tc = data.topCalls||[];
+  if (exp) document.getElementById('optionsExpiry').textContent = exp + ' expiry';
+  document.getElementById('optMaxPain').textContent = mp ? mp.toLocaleString() : '—';
+  const diff = pviLow && mp ? mp - pviLow : null;
   const vsEl = document.getElementById('optVsLow');
-  vsEl.textContent = diff !== null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '—';
-  vsEl.className = 'options-stat-val ' + (diff === null ? 'neutral' : diff < 0 ? 'bearish' : 'bullish');
-  const adjLow = (maxPain && pviLow && maxPain < pviLow) ? maxPain : pviLow;
-  document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : (maxPain ? maxPain.toLocaleString() : '—');
-  document.getElementById('putWallsList').innerHTML = (topPuts || []).map(w =>
-    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
-    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
-  ).join('');
-  document.getElementById('callWallsList').innerHTML = (topCalls || []).map(w =>
-    '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() +
-    '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>'
-  ).join('');
-  let note = '';
-  if (maxPain && pviLow) {
-    note = maxPain < pviLow
-      ? 'Max pain (' + maxPain.toLocaleString() + ') < VIX Low → anchoring Low down'
-      : 'Max pain (' + maxPain.toLocaleString() + ') ≥ VIX Low — no adjustment';
-  } else if (maxPain) {
-    note = 'Max pain: ' + maxPain.toLocaleString() + ' | Run Calculate to compare vs VIX Low';
-  }
-  const strongestPut = (topPuts || []).filter(w => !pviLow || w.strike < pviLow - 150)[0];
-  if (strongestPut) note += ' | Watch put wall at ' + strongestPut.strike.toLocaleString() + ' (' + strongestPut.oi.toLocaleString() + ' OI)';
-  document.getElementById('optionsNote').textContent = note;
+  vsEl.textContent = diff!==null?(diff>0?'+':'')+diff.toLocaleString():'—';
+  vsEl.className='options-stat-val '+(diff===null?'neutral':diff<0?'bearish':'bullish');
+  const adj=(mp&&pviLow&&mp<pviLow)?mp:pviLow;
+  document.getElementById('optAdjLow').textContent=adj?adj.toLocaleString():(mp?mp.toLocaleString():'—');
+  document.getElementById('putWallsList').innerHTML=tp.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
+  document.getElementById('callWallsList').innerHTML=tc.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
+  let note='';
+  if(mp&&pviLow) note=mp<pviLow?'Max pain ('+mp.toLocaleString()+') < VIX Low → anchoring Low down':'Max pain ('+mp.toLocaleString()+') ≥ VIX Low — no adjustment';
+  else if(mp) note='Max pain: '+mp.toLocaleString()+' | Run Calculate to compare vs VIX Low';
+  const sp=tp.find(w=>!pviLow||w.strike<(pviLow||99999)-150);
+  if(sp) note+=' | Watch put wall at '+sp.strike.toLocaleString()+' ('+sp.oi.toLocaleString()+' OI)';
+  document.getElementById('optionsNote').textContent=note;
 }
 </script>
 </body>
