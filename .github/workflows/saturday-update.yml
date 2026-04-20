@@ -41,9 +41,14 @@ jobs:
               return dt, float(df.loc[dt, "Close"].iloc[0] if hasattr(df.loc[dt, "Close"], "iloc") else df.loc[dt, "Close"])
 
           fri_dt, spx = get_last_friday_row(spx_hist)
-          _, vix = get_last_friday_row(vix_hist)
+          # Use the same Friday date as SPX for VIX
+          try:
+              vix_close = float(vix_hist.loc[fri_dt, "Close"].iloc[0] if hasattr(vix_hist.loc[fri_dt, "Close"], "iloc") else vix_hist.loc[fri_dt, "Close"])
+          except:
+              _, vix_close = get_last_friday_row(vix_hist)
+          vix_close = round(vix_close, 2)
           spx = round(spx, 2)
-          vix = round(vix, 2)
+          vix = vix_close
           date_str = fri_dt.strftime("%Y-%m-%d")
           print(f"Using Friday: {date_str}  SPX={spx}  VIX={vix}")
 
