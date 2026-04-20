@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Options Bridge</title>
+<style>
+  body { background:#0a0a0f; color:#e8e8f0; font-family:monospace; padding:20px; font-size:13px; }
+  #status { color:#4af0a0; margin-bottom:10px; font-size:14px; }
+  #log { color:#888; font-size:11px; line-height:1.8; }
+</style>
+</head>
+<body>
+<div id="status">Initializing options fetch...</div>
+<div id="log"></div>
+<script>
+function log(msg) {
+  document.getElementById('log').innerHTML += msg + '<br>';
+}
+
+async function fetchAndSend(crumb, spx, pviLow, origin) {
+  const status = document.getElementById('status');
+  const PROXY = 'https://corsproxy.io/?';
+
+  status.textContent = 'Fetching SPX options chain...';
+  const d0 = await fetch(PROXY + encodeURIComponent(
+    'https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb=' + encodeURIComponent(crumb)
+  )).then(r => r.json());
+
+  const exps = d0?.optionChain?.result?.[0]?.expirationDates || [];
+  log('Expirations found: ' + exps.length);
+  if (!exps.length) throw new Error('No expirations returned — crumb may be invalid');
+
+  const now = Date.now() / 1000;
+  const weekExps = exps.filter(ts => ts > now && ts < now + 8 * 86400);
+  const targetTs = weekExps[weekExps.length - 1];
+  if (!targetTs) throw new Error('No weekly expiry found');
+
+  const expDate = new Date(targetTs * 1000);
+  const expLabel = (expDate.getMonth() + 1) + '/' + expDate.getDate();
+  log('Target expiry: ' + expDate.toDateString());
+  status.textContent = 'Fetching ' + expLabel + ' options chain...';
+
+  const d1 = await fetch(PROXY + encodeURIComponent(
+    'https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date=' + targetTs +
+    '&crumb=' + encodeURIComponent(crumb)
+  )).then(r => r.json());
+
+  const result = d1?.optionChain?.result?.[0];
+  if (!result) throw new Error('No options data returned');
+
+  const calls = result.options[0].calls || [];
+  const puts  = result.options[0].puts  || [];
+  log('Calls: ' + calls.length + ' | Puts: ' + puts.length);
+
+  const lo = spx * 0.85, hi = spx * 1.15;
+  const callOI = {}, putOI = {};
+  calls.filter(c => c.openInterest > 0 && c.strike >= lo && c.strike <= hi)
+       .forEach(c => callOI[c.strike] = c.openInterest);
+  puts.filter(p => p.openInterest > 0 && p.strike >= lo && p.strike <= hi)
+      .forEach(p => putOI[p.strike] = p.openInterest);
+
+  const allStrikes = [...new Set([...Object.keys(callOI), ...Object.keys(putOI)].map(Number))].sort((a, b) => a - b);
+  log('Strikes in range: ' + allStrikes.length);
+  if (!allStrikes.length) throw new Error('No OI data in range');
+
+  let minPain = Infinity, maxPainStrike = null;
+  for (const s of allStrikes) {
+    const cp = Object.entries(callOI).reduce((sum, [k, oi]) => +k < s ? sum + (s - +k) * oi : sum, 0);
+    const pp = Object.entries(putOI).reduce((sum, [k, oi]) => +k > s ? sum + (+k - s) * oi : sum, 0);
+    if (cp + pp < minPain) { minPain = cp + pp; maxPainStrike = s; }
+  }
+  log('Max pain: ' + maxPainStrike);
+
+  const topPuts  = Object.entries(putOI).sort(([, a], [, b]) => b - a).slice(0, 4).map(([k, oi]) => ({ strike: +k, oi }));
+  const topCalls = Object.entries(callOI).sort(([, a], [, b]) => b - a).slice(0, 4).map(([k, oi]) => ({ strike: +k, oi }));
+
+  status.textContent = 'Done! Sending results to app...';
+  log('Max pain: ' + maxPainStrike + ' | Sending to opener...');
+
+  const payload = { type: 'OPTIONS_DATA', maxPain: maxPainStrike, expiry: expLabel, topPuts, topCalls, spx, pviLow };
+
+  if (window.opener) {
+    window.opener.postMessage(payload, '*');
+    log('Sent successfully. Closing in 2s...');
+    setTimeout(() => window.close(), 2000);
+  } else {
+    log('No opener found — results: ' + JSON.stringify(payload));
+    status.textContent = 'Done: max pain = ' + maxPainStrike;
+  }
+}
+
+async function run() {
+  const status = document.getElementById('status');
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const spx    = parseFloat(params.get('spx') || '0');
+    const pviLow = parseFloat(params.get('low') || '0');
+    const origin = params.get('origin') || '*';
+    log('SPX: ' + spx + ' | VIX Low: ' + pviLow);
+
+    // Check if returning from Yahoo Finance redirect
+    const phase = sessionStorage.getItem('bridge_phase');
+    if (phase === 'get_crumb') {
+      sessionStorage.removeItem('bridge_phase');
+      log('Returned from Yahoo Finance. Fetching crumb...');
+      const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { credentials: 'include', mode: 'cors' });
+      const crumb = await cr.text();
+      log('Crumb: ' + crumb.slice(0, 12) + '...');
+      if (!crumb || crumb.length < 3) throw new Error('No crumb after redirect');
+      await fetchAndSend(crumb, spx, pviLow, origin);
+      return;
+    }
+
+    // First attempt: get crumb directly (works if user has active Yahoo session)
+    status.textContent = 'Fetching crumb from Yahoo Finance...';
+    let crumb = '';
+    try {
+      const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { credentials: 'include', mode: 'cors' });
+      crumb = await cr.text();
+      log('Direct crumb: ' + (crumb ? crumb.slice(0, 12) + '...' : 'empty'));
+    } catch (e) {
+      log('Direct crumb failed: ' + e.message);
+    }
+
+    if (crumb && crumb.length >= 3 && !crumb.includes('<') && !crumb.includes('Unauthorized')) {
+      await fetchAndSend(crumb, spx, pviLow, origin);
+    } else {
+      // Redirect to Yahoo Finance to establish session, then come back
+      log('No valid crumb — redirecting to Yahoo Finance...');
+      status.textContent = 'Redirecting to Yahoo Finance to establish session...';
+      sessionStorage.setItem('bridge_phase', 'get_crumb');
+      sessionStorage.setItem('bridge_spx', spx);
+      sessionStorage.setItem('bridge_low', pviLow);
+      sessionStorage.setItem('bridge_origin', origin);
+      setTimeout(() => {
+        window.location.href = 'https://finance.yahoo.com/quote/%5ESPX/options/';
+      }, 800);
+    }
+  } catch (e) {
+    log('Error: ' + e.message);
+    document.getElementById('status').textContent = '✗ Error: ' + e.message;
+    window.opener?.postMessage({ type: 'OPTIONS_ERROR', error: e.message }, '*');
+  }
+}
+
+run();
+</script>
+</body>
+</html>
