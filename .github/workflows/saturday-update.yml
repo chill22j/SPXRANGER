@@ -20,28 +20,31 @@ jobs:
           import yfinance as yf
           import json, math, datetime
 
-          spx_ticker = yf.Ticker("^GSPC")
-          vix_ticker = yf.Ticker("^VIX")
-          spx = round(spx_ticker.fast_info["lastPrice"], 2)
-          vix = round(vix_ticker.fast_info["lastPrice"], 2)
-          hist = spx_ticker.history(period="30d")
-          closes = hist["Close"].tolist()
+          # Pull 30 days of history for SPX and VIX
+          spx_hist = yf.Ticker("^GSPC").history(period="30d")
+          vix_hist = yf.Ticker("^VIX").history(period="30d")
 
-          # Always use the most recent FRIDAY close as the base date
-          # The workflow runs Saturday, but may also run mid-week (workflow_dispatch)
-          # Find last Friday in the history index
-          last_friday = None
-          for idx_dt in reversed(hist.index):
+          # Find the most recent Friday in history (the actual Friday close)
+          last_friday_idx = None
+          for idx_dt in reversed(spx_hist.index):
               if idx_dt.weekday() == 4:  # 4 = Friday
-                  last_friday = idx_dt.to_pydatetime()
+                  last_friday_idx = idx_dt
                   break
-          if not last_friday:
-              last_friday = hist.index[-1].to_pydatetime()
 
+          if not last_friday_idx:
+              last_friday_idx = spx_hist.index[-1]
+
+          last_friday = last_friday_idx.to_pydatetime()
           date_str = last_friday.strftime("%Y-%m-%d")
-          print(f"Last Friday: {date_str}")
+
+          # Use the CLOSING price from that specific Friday — not live price
+          spx = round(float(spx_hist.loc[last_friday_idx, "Close"]), 2)
+          vix = round(float(vix_hist.loc[last_friday_idx, "Close"]), 2) if last_friday_idx in vix_hist.index else round(float(vix_hist["Close"].iloc[-1]), 2)
+
+          print(f"Last Friday: {date_str}  SPX close={spx}  VIX close={vix}")
 
           # HV20 from recent closes
+          closes = spx_hist["Close"].tolist()
           log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
           if len(log_rets) >= 2:
               mean = sum(log_rets)/len(log_rets)
@@ -50,12 +53,11 @@ jobs:
           else:
               hv20 = None
 
-          # Coming week = Mon-Fri after last Friday
-          mon = last_friday + datetime.timedelta(days=3)  # Fri + 3 = Mon
-          fri = last_friday + datetime.timedelta(days=7)  # Fri + 7 = next Fri
+          # Coming week = Mon through Fri after last Friday
+          mon = last_friday + datetime.timedelta(days=3)
+          fri = last_friday + datetime.timedelta(days=7)
           weekof = f"{mon.month}/{mon.day}-{fri.month}/{fri.day}"
-          print(f"SPX={spx} VIX={vix} HV20={hv20} weekof={weekof}")
-          print(f"Coming week: {mon.date()} to {fri.date()}")
+          print(f"Coming week: {mon.date()} to {fri.date()}  weekof={weekof}")
 
           max_pain = None
           top_puts = []
@@ -73,7 +75,7 @@ jobs:
                   exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
                   days_from_mon = (exp_date - mon.date()).days
                   if 0 <= days_from_mon <= 4:
-                      target_exp = exp  # keep overwriting to get LAST in week
+                      target_exp = exp
 
               if not target_exp and expirations:
                   target_exp = expirations[0]
@@ -121,7 +123,7 @@ jobs:
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-          print(f"Done: maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
+          print(f"Done: SPX={spx} VIX={vix} maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
           PYEOF
 
       - name: Commit
