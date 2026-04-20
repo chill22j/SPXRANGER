@@ -18,44 +18,63 @@ jobs:
           pip install yfinance --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
-          import json, math, datetime
-          import pandas as pd
+          import urllib.request, json, math, datetime
 
-          # Download last 10 days of data with auto_adjust=False to get raw closes
-          spx_hist = yf.download("^GSPC", period="10d", auto_adjust=False, progress=False)
-          vix_hist = yf.download("^VIX",  period="10d", auto_adjust=False, progress=False)
+          HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-          # Print all available rows so we can see what yfinance returns
-          print("SPX rows:")
-          print(spx_hist[["Close"]].tail(5).to_string())
-          print("VIX rows:")
-          print(vix_hist[["Close"]].tail(5).to_string())
+          def fetch_chart(symbol, period="10d"):
+              url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
+              req = urllib.request.Request(url, headers=HEADERS)
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  return json.loads(r.read())
 
-          # Find the most recent Friday row
-          def get_last_friday_row(df):
-              for dt in reversed(df.index):
-                  if dt.weekday() == 4:  # Friday
-                      return dt, float(df.loc[dt, "Close"].iloc[0] if hasattr(df.loc[dt, "Close"], "iloc") else df.loc[dt, "Close"])
-              # Fallback: last available row
-              dt = df.index[-1]
-              return dt, float(df.loc[dt, "Close"].iloc[0] if hasattr(df.loc[dt, "Close"], "iloc") else df.loc[dt, "Close"])
+          # Fetch SPX and VIX via direct Yahoo Finance API (more reliable than yfinance lib)
+          spx_data = fetch_chart("%5EGSPC", "10d")
+          vix_data = fetch_chart("%5EVIX", "10d")
 
-          fri_dt, spx = get_last_friday_row(spx_hist)
-          # Use the same Friday date as SPX for VIX
-          try:
-              vix_close = float(vix_hist.loc[fri_dt, "Close"].iloc[0] if hasattr(vix_hist.loc[fri_dt, "Close"], "iloc") else vix_hist.loc[fri_dt, "Close"])
-          except:
-              _, vix_close = get_last_friday_row(vix_hist)
-          vix_close = round(vix_close, 2)
-          spx = round(spx, 2)
-          vix = vix_close
-          date_str = fri_dt.strftime("%Y-%m-%d")
-          print(f"Using Friday: {date_str}  SPX={spx}  VIX={vix}")
+          spx_result = spx_data["chart"]["result"][0]
+          vix_result = vix_data["chart"]["result"][0]
 
-          # HV20 from last 30 days
-          hist30 = yf.download("^GSPC", period="30d", auto_adjust=False, progress=False)
-          closes = hist30["Close"].squeeze().dropna().tolist()
-          log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1,len(closes)) if closes[i] and closes[i-1]]
+          spx_timestamps = spx_result["timestamp"]
+          spx_closes     = spx_result["indicators"]["quote"][0]["close"]
+          vix_closes     = vix_result["indicators"]["quote"][0]["close"]
+          vix_timestamps = vix_result["timestamp"]
+
+          # Find the most recent Friday in SPX data
+          last_friday_ts = None
+          last_friday_spx = None
+          for i in range(len(spx_timestamps)-1, -1, -1):
+              dt = datetime.datetime.utcfromtimestamp(spx_timestamps[i])
+              if dt.weekday() == 4 and spx_closes[i]:  # Friday
+                  last_friday_ts = spx_timestamps[i]
+                  last_friday_spx = spx_closes[i]
+                  last_friday_dt = dt
+                  break
+
+          if not last_friday_ts:
+              last_friday_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[-1])
+              last_friday_spx = spx_closes[-1]
+
+          # Find VIX close for same Friday date
+          last_friday_vix = None
+          target_date = last_friday_dt.strftime("%Y-%m-%d")
+          for i in range(len(vix_timestamps)-1, -1, -1):
+              dt = datetime.datetime.utcfromtimestamp(vix_timestamps[i])
+              if dt.strftime("%Y-%m-%d") == target_date and vix_closes[i]:
+                  last_friday_vix = vix_closes[i]
+                  break
+
+          if not last_friday_vix:
+              last_friday_vix = vix_closes[-1]
+
+          spx = round(last_friday_spx, 2)
+          vix = round(last_friday_vix, 2)
+          date_str = last_friday_dt.strftime("%Y-%m-%d")
+          print(f"Friday: {date_str}  SPX={spx}  VIX={vix}")
+
+          # HV20 from SPX closes
+          valid_closes = [c for c in spx_closes if c]
+          log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1,len(valid_closes))]
           if len(log_rets) >= 2:
               mean = sum(log_rets)/len(log_rets)
               var = sum((r-mean)**2 for r in log_rets)/(len(log_rets)-1)
@@ -63,13 +82,13 @@ jobs:
           else:
               hv20 = None
 
-          # Coming week dates
-          last_friday = fri_dt.to_pydatetime()
-          mon = last_friday + datetime.timedelta(days=3)
-          fri_next = last_friday + datetime.timedelta(days=7)
+          # Coming week
+          mon = last_friday_dt + datetime.timedelta(days=3)
+          fri_next = last_friday_dt + datetime.timedelta(days=7)
           weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
-          print(f"weekof={weekof}  coming Mon={mon.date()}  Fri={fri_next.date()}")
+          print(f"weekof={weekof}  Mon={mon.date()}  Fri={fri_next.date()}")
 
+          # Options via yfinance (handles auth)
           max_pain = None
           top_puts = []
           top_calls = []
@@ -89,7 +108,7 @@ jobs:
 
               if not target_exp and expirations:
                   target_exp = expirations[0]
-                  print("Fallback: using first available expiry")
+                  print("Fallback: first available expiry")
 
               print(f"Target expiry: {target_exp}")
               exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
@@ -107,7 +126,6 @@ jobs:
               call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
               put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
               all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
-              print(f"Strikes in range: {len(all_strikes)}")
 
               min_pain = float("inf")
               for s in all_strikes:
