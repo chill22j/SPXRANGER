@@ -1,8 +1,14 @@
 {
-  "spx": 7126.06,
-  "vix": 17.48,
-  "hv20": null,
-  "date": "2026-04-17",
-  "weekof": "4/20\u20134/24",
-  "updated": "2026-04-19T04:17:45Z"
+  "spx": 7109.14,
+  "vix": 18.87,
+  "hv20": 9.93,
+  "date": "2026-04-20",
+  "weekof": "4/27-5/1",
+  "updated": "2026-04-20T21:16:01Z",
+  "options": {
+    "expiry": null,
+    "maxPain": null,
+    "topPuts": [],
+    "topCalls": []
+  }
 }
