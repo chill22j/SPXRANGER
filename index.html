@@ -108,7 +108,7 @@
       <div class="input-group"><label>Week of</label><input type="text" id="weekof" placeholder="4/13–4/17"></div>
     </div>
     <button class="fetch-btn" id="fetchBtn" onclick="fetchMarketData()">
-      <span id="fetchIcon">⟳</span><span id="fetchLabel">Auto-fetch latest SPX & VIX</span>
+      <span id="fetchIcon">⟳</span><span id="fetchLabel">Fetch live prices (not for prediction use)</span>
     </button>
     <div class="fetch-status" id="fetchStatus"></div>
     <button class="calc-btn" onclick="calculate()">Calculate SPX Weekly Ranges</button>
@@ -196,7 +196,7 @@
           }, null);
           document.getElementById('optionsFetchBtn').textContent = '✓ Loaded from Saturday update';
         }
-    } catch(e) { fetchMarketData(true); }
+    } catch(e) { status.className='fetch-status err'; status.textContent='Could not load market data. Use the fetch button to load live prices.'; }
   }
 
   async function fetchMarketData(silent = false) {
@@ -229,7 +229,7 @@
       const fmt = d => (d.getMonth()+1) + '/' + d.getDate();
       populateFields({ spx, vix, weekof: fmt(mon) + '–' + fmt(fri) });
       status.className = 'fetch-status ok';
-      status.textContent = '✓ Live: SPX ' + spx.toLocaleString() + ' | VIX ' + vix + ' | ' + dt.toISOString().slice(0,10);
+      status.textContent = '⚠ Live price (mid-week): SPX ' + spx.toLocaleString() + ' | VIX ' + vix + ' — use Friday close for predictions';
     } catch(err) {
       status.className = 'fetch-status err';
       status.textContent = '✗ Fetch failed (' + err.message + ') — enter manually.';
