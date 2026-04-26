@@ -96,7 +96,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.3</span></div>
+    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.4</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
   <div class="card">
@@ -155,7 +155,7 @@
         <tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.55 / 1.50</td><td><span class="accuracy">High</span></td></tr>
       </tbody>
     </table>
-    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 13 weeks of 2026 data. Avg error: ~16 pts Low, ~19 pts High. SPX only.</div>
+    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 14 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >3% above MA50, kLow×1.4. When >3% below MA50, kHigh×1.15.</div>
   </div>
   <div class="card">
     <div class="card-title">Prediction History</div>
@@ -177,6 +177,8 @@
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded: SPX ' + d.spx.toLocaleString() + ' | VIX ' + d.vix + ' | as of ' + updated;
     
+        window.marketStretch = (typeof d.stretch === 'number') ? d.stretch : null;
+        window.marketMA50 = (typeof d.ma50 === 'number') ? d.ma50 : null;
         if (d.options && d.options.maxPain) {
           document.getElementById('optionsCard').style.display = 'block';
           renderOptionsData({maxPain:d.options.maxPain,expiry:d.options.expiry||'',topPuts:d.options.topPuts||[],topCalls:d.options.topCalls||[]}, null);
@@ -250,15 +252,29 @@
     const weekof = document.getElementById('weekof').value || '—';
     if (isNaN(spx) || isNaN(vix)) { alert('Please enter SPX Close and VIX.'); return; }
     const isStressed = vix >= 21;
-    const kLow  = isStressed ? 1.55 : 1.45;
-    const kHigh = isStressed ? 1.50 : 1.35;
+    let kLow  = isStressed ? 1.55 : 1.45;
+    let kHigh = isStressed ? 1.50 : 1.35;
+    // Stretch-based adjustment using MA50
+    const stretch = window.marketStretch;  // set by loadLatestData
+    let stretchNote = '';
+    if (stretch !== null && stretch !== undefined) {
+      if (stretch > 3) {
+        kLow *= 1.40;
+        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×1.4';
+      } else if (stretch < -3) {
+        kHigh *= 1.15;
+        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% → kHigh×1.15';
+      } else {
+        stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
+      }
+    }
     const wv = (vix/100) * Math.sqrt(5/252);
     const pviLow = Math.round(spx * (1 - kLow*wv));
     const pviHigh = Math.round(spx * (1 + kHigh*wv));
     const mid = Math.round((pviLow+pviHigh)/2);
     const width = pviHigh - pviLow;
     document.getElementById('regimeCard').style.display = 'block';
-    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → kLow=' + kLow.toFixed(2) + ' kHigh=' + kHigh.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%</div>';
+    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → kLow=' + kLow.toFixed(2) + ' kHigh=' + kHigh.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%' + stretchNote + '</div>';
     document.getElementById('effVol').textContent = vix.toFixed(1) + '%';
     document.getElementById('lowMult').textContent  = (1-kLow*wv).toFixed(4);
     document.getElementById('highMult').textContent = (1+kHigh*wv).toFixed(4);
