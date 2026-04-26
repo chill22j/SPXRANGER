@@ -22,15 +22,15 @@ jobs:
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-          def fetch_chart(symbol, period="10d"):
+          def fetch_chart(symbol, period="3mo"):
               url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
               req = urllib.request.Request(url, headers=HEADERS)
               with urllib.request.urlopen(req, timeout=15) as r:
                   return json.loads(r.read())
 
-          # Fetch SPX and VIX via direct Yahoo Finance API (more reliable than yfinance lib)
-          spx_data = fetch_chart("%5EGSPC", "10d")
-          vix_data = fetch_chart("%5EVIX", "10d")
+          # Fetch SPX (3mo for MA50) and VIX
+          spx_data = fetch_chart("%5EGSPC", "3mo")
+          vix_data = fetch_chart("%5EVIX", "3mo")
 
           spx_result = spx_data["chart"]["result"][0]
           vix_result = vix_data["chart"]["result"][0]
@@ -40,22 +40,24 @@ jobs:
           vix_closes     = vix_result["indicators"]["quote"][0]["close"]
           vix_timestamps = vix_result["timestamp"]
 
-          # Find the most recent Friday in SPX data
+          # Find most recent Friday in SPX data
           last_friday_ts = None
-          last_friday_spx = None
+          last_friday_idx = None
           for i in range(len(spx_timestamps)-1, -1, -1):
               dt = datetime.datetime.utcfromtimestamp(spx_timestamps[i])
-              if dt.weekday() == 4 and spx_closes[i]:  # Friday
+              if dt.weekday() == 4 and spx_closes[i]:
                   last_friday_ts = spx_timestamps[i]
-                  last_friday_spx = spx_closes[i]
+                  last_friday_idx = i
                   last_friday_dt = dt
                   break
 
-          if not last_friday_ts:
+          if last_friday_idx is None:
+              last_friday_idx = len(spx_timestamps) - 1
               last_friday_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[-1])
-              last_friday_spx = spx_closes[-1]
 
-          # Find VIX close for same Friday date
+          spx = round(spx_closes[last_friday_idx], 2)
+
+          # Find VIX close for same Friday
           last_friday_vix = None
           target_date = last_friday_dt.strftime("%Y-%m-%d")
           for i in range(len(vix_timestamps)-1, -1, -1):
@@ -63,16 +65,24 @@ jobs:
               if dt.strftime("%Y-%m-%d") == target_date and vix_closes[i]:
                   last_friday_vix = vix_closes[i]
                   break
-
           if not last_friday_vix:
               last_friday_vix = vix_closes[-1]
-
-          spx = round(last_friday_spx, 2)
           vix = round(last_friday_vix, 2)
+
           date_str = last_friday_dt.strftime("%Y-%m-%d")
           print(f"Friday: {date_str}  SPX={spx}  VIX={vix}")
 
-          # HV20 from SPX closes
+          # 50-day MA at last_friday_idx
+          ma50 = None
+          stretch_pct = None
+          if last_friday_idx >= 49:
+              valid_50 = [c for c in spx_closes[last_friday_idx-49:last_friday_idx+1] if c]
+              if len(valid_50) >= 40:
+                  ma50 = round(sum(valid_50) / len(valid_50), 2)
+                  stretch_pct = round(((spx - ma50) / ma50) * 100, 2)
+          print(f"MA50={ma50}  Stretch={stretch_pct}%")
+
+          # HV20
           valid_closes = [c for c in spx_closes if c]
           log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1,len(valid_closes))]
           if len(log_rets) >= 2:
@@ -86,9 +96,9 @@ jobs:
           mon = last_friday_dt + datetime.timedelta(days=3)
           fri_next = last_friday_dt + datetime.timedelta(days=7)
           weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
-          print(f"weekof={weekof}  Mon={mon.date()}  Fri={fri_next.date()}")
+          print(f"weekof={weekof}")
 
-          # Options via yfinance (handles auth)
+          # Options
           max_pain = None
           top_puts = []
           top_calls = []
@@ -97,61 +107,53 @@ jobs:
           try:
               spx_opts = yf.Ticker("^SPX")
               expirations = list(spx_opts.options)
-              print(f"Expirations (first 8): {expirations[:8]}")
-
               target_exp = None
               for exp in expirations:
                   exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
                   days_from_mon = (exp_date - mon.date()).days
                   if 0 <= days_from_mon <= 4:
                       target_exp = exp
-
               if not target_exp and expirations:
                   target_exp = expirations[0]
-                  print("Fallback: first available expiry")
 
-              print(f"Target expiry: {target_exp}")
               exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
               options_expiry = f"{exp_dt.month}/{exp_dt.day}"
 
               chain = spx_opts.option_chain(target_exp)
               calls_df = chain.calls
-              puts_df  = chain.puts
-              print(f"Calls: {len(calls_df)}  Puts: {len(puts_df)}")
+              puts_df = chain.puts
 
               lo, hi = spx * 0.85, spx * 1.15
               calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
-              puts_df  = puts_df[ (puts_df["strike"]  >= lo) & (puts_df["strike"]  <= hi) & (puts_df["openInterest"]  > 0)]
+              puts_df = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
 
               call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
-              put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
+              put_oi = dict(zip(puts_df["strike"].tolist(), puts_df["openInterest"].tolist()))
               all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
 
               min_pain = float("inf")
               for s in all_strikes:
                   cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
-                  pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
+                  pp = sum((k-s)*oi for k,oi in put_oi.items() if k > s)
                   if cp+pp < min_pain:
                       min_pain = cp+pp
                       max_pain = int(s)
 
-              print(f"Max pain: {max_pain}")
-              top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
+              top_puts = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()], key=lambda x:-x["oi"])[:4]
               top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
-
           except Exception as e:
               print(f"Options error: {e}")
-              import traceback; traceback.print_exc()
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
+              "ma50": ma50, "stretch": stretch_pct,
               "date": date_str, "weekof": weekof,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
               "options": {"expiry": options_expiry, "maxPain": max_pain, "topPuts": top_puts, "topCalls": top_calls}
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-          print(f"SAVED: SPX={spx} VIX={vix} maxPain={max_pain} expiry={options_expiry} weekof={weekof}")
+          print(f"SAVED: SPX={spx} VIX={vix} MA50={ma50} stretch={stretch_pct}% maxPain={max_pain}")
           PYEOF
 
       - name: Commit
