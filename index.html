@@ -96,7 +96,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.5</span></div>
+    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.6</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
   <div class="card">
@@ -155,7 +155,7 @@
         <tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.55 / 1.50</td><td><span class="accuracy">High</span></td></tr>
       </tbody>
     </table>
-    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 15 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >3% above MA50, kLow×1.25. When >3% below MA50, kHigh×1.10.</div>
+    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 30 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >4% above MA50, kLow×1.25. Stressed kHigh base raised to 1.55.</div>
   </div>
   <div class="card">
     <div class="card-title">Prediction History</div>
@@ -253,17 +253,16 @@
     if (isNaN(spx) || isNaN(vix)) { alert('Please enter SPX Close and VIX.'); return; }
     const isStressed = vix >= 21;
     let kLow  = isStressed ? 1.55 : 1.45;
-    let kHigh = isStressed ? 1.50 : 1.35;
+    let kHigh = isStressed ? 1.55 : 1.35;
     // Stretch-based adjustment using MA50
     const stretch = window.marketStretch;  // set by loadLatestData
     let stretchNote = '';
     if (stretch !== null && stretch !== undefined) {
-      if (stretch > 3) {
+      if (stretch > 4) {
         kLow *= 1.25;
         stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×1.25';
-      } else if (stretch < -3) {
-        kHigh *= 1.10;
-        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% → kHigh×1.10';
+      } else if (stretch < -4) {
+        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% (no adj)';
       } else {
         stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
       }
