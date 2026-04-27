@@ -96,7 +96,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.4</span></div>
+    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.5</span></div>
     <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
   </header>
   <div class="card">
@@ -155,7 +155,7 @@
         <tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.55 / 1.50</td><td><span class="accuracy">High</span></td></tr>
       </tbody>
     </table>
-    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 14 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >3% above MA50, kLow×1.4. When >3% below MA50, kHigh×1.15.</div>
+    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 15 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >3% above MA50, kLow×1.25. When >3% below MA50, kHigh×1.10.</div>
   </div>
   <div class="card">
     <div class="card-title">Prediction History</div>
@@ -259,11 +259,11 @@
     let stretchNote = '';
     if (stretch !== null && stretch !== undefined) {
       if (stretch > 3) {
-        kLow *= 1.40;
-        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×1.4';
+        kLow *= 1.25;
+        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×1.25';
       } else if (stretch < -3) {
-        kHigh *= 1.15;
-        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% → kHigh×1.15';
+        kHigh *= 1.10;
+        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% → kHigh×1.10';
       } else {
         stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
       }
