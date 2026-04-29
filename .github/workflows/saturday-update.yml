@@ -31,6 +31,9 @@ jobs:
           # Fetch SPX (3mo for MA50) and VIX
           spx_data = fetch_chart("%5EGSPC", "3mo")
           vix_data = fetch_chart("%5EVIX", "3mo")
+          ndx_data = fetch_chart("%5ENDX", "3mo")
+          vxn_data = fetch_chart("%5EVXN", "3mo")
+          qqq_data = fetch_chart("QQQ", "3mo")
 
           spx_result = spx_data["chart"]["result"][0]
           vix_result = vix_data["chart"]["result"][0]
@@ -39,6 +42,16 @@ jobs:
           spx_closes     = spx_result["indicators"]["quote"][0]["close"]
           vix_closes     = vix_result["indicators"]["quote"][0]["close"]
           vix_timestamps = vix_result["timestamp"]
+
+          ndx_result = ndx_data["chart"]["result"][0]
+          vxn_result = vxn_data["chart"]["result"][0]
+          qqq_result = qqq_data["chart"]["result"][0]
+          ndx_timestamps = ndx_result["timestamp"]
+          ndx_closes     = ndx_result["indicators"]["quote"][0]["close"]
+          vxn_timestamps = vxn_result["timestamp"]
+          vxn_closes     = vxn_result["indicators"]["quote"][0]["close"]
+          qqq_timestamps = qqq_result["timestamp"]
+          qqq_closes     = qqq_result["indicators"]["quote"][0]["close"]
 
           # Find most recent Friday in SPX data
           last_friday_ts = None
@@ -81,6 +94,31 @@ jobs:
                   ma50 = round(sum(valid_50) / len(valid_50), 2)
                   stretch_pct = round(((spx - ma50) / ma50) * 100, 2)
           print(f"MA50={ma50}  Stretch={stretch_pct}%")
+
+          # Find NDX/VXN/QQQ closes for same Friday
+          def find_close_for_date(ts_list, c_list, td):
+              for i in range(len(ts_list)-1, -1, -1):
+                  dt = datetime.datetime.utcfromtimestamp(ts_list[i])
+                  if dt.strftime("%Y-%m-%d") == td and c_list[i]:
+                      return c_list[i], i
+              return None, None
+
+          ndx_val, ndx_idx = find_close_for_date(ndx_timestamps, ndx_closes, target_date)
+          vxn_val, _       = find_close_for_date(vxn_timestamps, vxn_closes, target_date)
+          qqq_val, _       = find_close_for_date(qqq_timestamps, qqq_closes, target_date)
+          ndx = round(ndx_val, 2) if ndx_val else None
+          vxn = round(vxn_val, 2) if vxn_val else None
+          qqq = round(qqq_val, 2) if qqq_val else None
+
+          # NDX 50-day MA
+          ndx_ma50 = None
+          ndx_stretch_pct = None
+          if ndx_idx is not None and ndx_idx >= 49:
+              valid_50_ndx = [c for c in ndx_closes[ndx_idx-49:ndx_idx+1] if c]
+              if len(valid_50_ndx) >= 40 and ndx is not None:
+                  ndx_ma50 = round(sum(valid_50_ndx) / len(valid_50_ndx), 2)
+                  ndx_stretch_pct = round(((ndx - ndx_ma50) / ndx_ma50) * 100, 2)
+          print(f"NDX={ndx}  VXN={vxn}  QQQ={qqq}  NDX_MA50={ndx_ma50}  NDX_Stretch={ndx_stretch_pct}%")
 
           # HV20
           valid_closes = [c for c in spx_closes if c]
@@ -147,6 +185,8 @@ jobs:
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
               "ma50": ma50, "stretch": stretch_pct,
+              "ndx": ndx, "vxn": vxn, "qqq": qqq,
+              "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
               "date": date_str, "weekof": weekof,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
               "options": {"expiry": options_expiry, "maxPain": max_pain, "topPuts": top_puts, "topCalls": top_calls}
