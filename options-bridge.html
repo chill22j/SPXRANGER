@@ -16,7 +16,7 @@
 function log(msg) { document.getElementById('log').innerHTML += msg + '<br>'; }
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
-async function fetchAndSend(spx, pviLow) {
+async function fetchAndSend(spx, pviLow, ticker, ySymbol) {
   setStatus('Fetching crumb...');
 
   // All direct — no proxy needed from Yahoo Finance domain
@@ -26,7 +26,7 @@ async function fetchAndSend(spx, pviLow) {
 
   setStatus('Fetching expirations...');
   const d0 = await fetch(
-    'https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb=' + encodeURIComponent(crumb),
+    'https://query1.finance.yahoo.com/v7/finance/options/' + ySymbol + '?crumb=' + encodeURIComponent(crumb),
     {credentials:'include'}
   ).then(r=>r.json());
 
@@ -46,7 +46,7 @@ async function fetchAndSend(spx, pviLow) {
   setStatus('Fetching ' + expLabel + ' options chain...');
 
   const d1 = await fetch(
-    'https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date=' + targetTs + '&crumb=' + encodeURIComponent(crumb),
+    'https://query1.finance.yahoo.com/v7/finance/options/' + ySymbol + '?date=' + targetTs + '&crumb=' + encodeURIComponent(crumb),
     {credentials:'include'}
   ).then(r=>r.json());
 
@@ -77,7 +77,7 @@ async function fetchAndSend(spx, pviLow) {
   const topPuts  = Object.entries(putOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
   const topCalls = Object.entries(callOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
 
-  const payload = {type:'OPTIONS_DATA', maxPain:maxPainStrike, expiry:expLabel, topPuts, topCalls, spx, pviLow};
+  const payload = {type:'OPTIONS_DATA', ticker, maxPain:maxPainStrike, expiry:expLabel, topPuts, topCalls, spx, pviLow};
 
   setStatus('Done! Sending to app...');
   if (window.opener && !window.opener.closed) {
@@ -95,14 +95,17 @@ async function run() {
     const params = new URLSearchParams(window.location.search);
     const spx    = parseFloat(params.get('spx') || '0');
     const pviLow = parseFloat(params.get('low') || '0');
-    log('SPX: ' + spx + ' | VIX Low: ' + pviLow);
+    const ticker = (params.get('ticker') || 'SPX').toUpperCase();
+    const SYMBOL_MAP = { SPX: '%5ESPX', NDX: '%5ENDX', QQQ: 'QQQ' };
+    const ySymbol = SYMBOL_MAP[ticker] || '%5ESPX';
+    log(ticker + ': ' + spx + ' | Vol Low: ' + pviLow);
 
     // Check if we just returned from Yahoo Finance redirect
     const phase = sessionStorage.getItem('bridge_phase');
     if (phase === 'get_crumb') {
       sessionStorage.removeItem('bridge_phase');
       log('Returned from Yahoo Finance.');
-      await fetchAndSend(spx, pviLow);
+      await fetchAndSend(spx, pviLow, ticker, ySymbol);
       return;
     }
 
@@ -115,7 +118,7 @@ async function run() {
       if (crumb && crumb.length >= 3 && !crumb.includes('<') && !crumb.includes('Unauthorized')) {
         crumbOk = true;
         log('Direct crumb worked!');
-        await fetchAndSend(spx, pviLow);
+        await fetchAndSend(spx, pviLow, ticker, ySymbol);
         return;
       }
     } catch(e) {
@@ -127,7 +130,7 @@ async function run() {
     setStatus('Redirecting to Yahoo Finance...');
     sessionStorage.setItem('bridge_phase', 'get_crumb');
     setTimeout(() => {
-      window.location.href = 'https://finance.yahoo.com/quote/%5ESPX/options/?redirect_uri=' +
+      window.location.href = 'https://finance.yahoo.com/quote/' + ySymbol + '/options/?redirect_uri=' +
         encodeURIComponent(window.location.href);
     }, 600);
 
