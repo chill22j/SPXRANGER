@@ -1,7 +1,7 @@
 {
   "spx": 7230.12,
   "vix": 16.99,
-  "hv20": 15.29,
+  "hv20": 15.17,
   "ma50": 6821.91,
   "stretch": 5.98,
   "ndx": 27710.36,
@@ -11,44 +11,124 @@
   "ndxStretch": 10.05,
   "date": "2026-05-01",
   "weekof": "5/4-5/8",
-  "updated": "2026-05-03T04:44:51Z",
+  "updated": "2026-05-04T22:08:19Z",
   "options": {
     "expiry": "5/8",
-    "maxPain": 7025,
+    "maxPain": 7100,
     "topPuts": [
       {
         "strike": 7000,
-        "oi": 4380
-      },
-      {
-        "strike": 6800,
-        "oi": 4283
-      },
-      {
-        "strike": 6900,
-        "oi": 4204
+        "oi": 5283
       },
       {
         "strike": 7100,
-        "oi": 4051
+        "oi": 4793
+      },
+      {
+        "strike": 6800,
+        "oi": 4666
+      },
+      {
+        "strike": 7150,
+        "oi": 3925
       }
     ],
     "topCalls": [
       {
-        "strike": 6950,
-        "oi": 6543
+        "strike": 7350,
+        "oi": 6679
       },
       {
-        "strike": 7350,
-        "oi": 5533
+        "strike": 6950,
+        "oi": 6602
       },
       {
         "strike": 7500,
-        "oi": 5010
+        "oi": 5343
       },
       {
-        "strike": 7200,
-        "oi": 3575
+        "strike": 7450,
+        "oi": 5273
+      }
+    ]
+  },
+  "ndxOptions": {
+    "expiry": "5/8",
+    "maxPain": 26570,
+    "topPuts": [
+      {
+        "strike": 24600,
+        "oi": 188
+      },
+      {
+        "strike": 24450,
+        "oi": 131
+      },
+      {
+        "strike": 24550,
+        "oi": 125
+      },
+      {
+        "strike": 25300,
+        "oi": 111
+      }
+    ],
+    "topCalls": [
+      {
+        "strike": 27700,
+        "oi": 161
+      },
+      {
+        "strike": 29000,
+        "oi": 121
+      },
+      {
+        "strike": 26000,
+        "oi": 111
+      },
+      {
+        "strike": 28700,
+        "oi": 94
+      }
+    ]
+  },
+  "qqqOptions": {
+    "expiry": "5/8",
+    "maxPain": 655,
+    "topPuts": [
+      {
+        "strike": 645,
+        "oi": 79818
+      },
+      {
+        "strike": 635,
+        "oi": 34222
+      },
+      {
+        "strike": 630,
+        "oi": 26620
+      },
+      {
+        "strike": 615,
+        "oi": 14335
+      }
+    ],
+    "topCalls": [
+      {
+        "strike": 675,
+        "oi": 29866
+      },
+      {
+        "strike": 655,
+        "oi": 11641
+      },
+      {
+        "strike": 660,
+        "oi": 9577
+      },
+      {
+        "strike": 665,
+        "oi": 9048
       }
     ]
   }
