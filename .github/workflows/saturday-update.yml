@@ -136,51 +136,59 @@ jobs:
           weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
           print(f"weekof={weekof}")
 
-          # Options
-          max_pain = None
-          top_puts = []
-          top_calls = []
-          options_expiry = None
+          # Options helper - reused for SPX/NDX/QQQ
+          def compute_options(yf_symbol, price, mon_dt):
+              max_pain = None
+              top_puts = []
+              top_calls = []
+              options_expiry = None
+              try:
+                  t = yf.Ticker(yf_symbol)
+                  expirations = list(t.options)
+                  target_exp = None
+                  for exp in expirations:
+                      exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
+                      days_from_mon = (exp_date - mon_dt.date()).days
+                      if 0 <= days_from_mon <= 4:
+                          target_exp = exp
+                  if not target_exp and expirations:
+                      target_exp = expirations[0]
+                  exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
+                  options_expiry = f"{exp_dt.month}/{exp_dt.day}"
+                  chain = t.option_chain(target_exp)
+                  calls_df = chain.calls
+                  puts_df  = chain.puts
+                  lo, hi = price * 0.85, price * 1.15
+                  calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
+                  puts_df  = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
+                  call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
+                  put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
+                  all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
+                  if all_strikes:
+                      min_pain = float("inf")
+                      for s in all_strikes:
+                          cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
+                          pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
+                          if cp+pp < min_pain:
+                              min_pain = cp+pp
+                              max_pain = int(s)
+                      top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
+                      top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
+              except Exception as e:
+                  print(f"Options error for {yf_symbol}: {e}")
+              return max_pain, top_puts, top_calls, options_expiry
 
-          try:
-              spx_opts = yf.Ticker("^SPX")
-              expirations = list(spx_opts.options)
-              target_exp = None
-              for exp in expirations:
-                  exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
-                  days_from_mon = (exp_date - mon.date()).days
-                  if 0 <= days_from_mon <= 4:
-                      target_exp = exp
-              if not target_exp and expirations:
-                  target_exp = expirations[0]
-
-              exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
-              options_expiry = f"{exp_dt.month}/{exp_dt.day}"
-
-              chain = spx_opts.option_chain(target_exp)
-              calls_df = chain.calls
-              puts_df = chain.puts
-
-              lo, hi = spx * 0.85, spx * 1.15
-              calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
-              puts_df = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
-
-              call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
-              put_oi = dict(zip(puts_df["strike"].tolist(), puts_df["openInterest"].tolist()))
-              all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
-
-              min_pain = float("inf")
-              for s in all_strikes:
-                  cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
-                  pp = sum((k-s)*oi for k,oi in put_oi.items() if k > s)
-                  if cp+pp < min_pain:
-                      min_pain = cp+pp
-                      max_pain = int(s)
-
-              top_puts = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()], key=lambda x:-x["oi"])[:4]
-              top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
-          except Exception as e:
-              print(f"Options error: {e}")
+          # Compute options for all three tickers
+          max_pain, top_puts, top_calls, options_expiry = compute_options("^SPX", spx, mon)
+          print(f"SPX options: maxPain={max_pain} expiry={options_expiry} puts={len(top_puts)} calls={len(top_calls)}")
+          ndx_max_pain = ndx_top_puts = ndx_top_calls = ndx_options_expiry = None
+          qqq_max_pain = qqq_top_puts = qqq_top_calls = qqq_options_expiry = None
+          if ndx is not None:
+              ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
+              print(f"NDX options: maxPain={ndx_max_pain} expiry={ndx_options_expiry} puts={len(ndx_top_puts or [])} calls={len(ndx_top_calls or [])}")
+          if qqq is not None:
+              qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
+              print(f"QQQ options: maxPain={qqq_max_pain} expiry={qqq_options_expiry} puts={len(qqq_top_puts or [])} calls={len(qqq_top_calls or [])}")
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
@@ -189,7 +197,9 @@ jobs:
               "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
               "date": date_str, "weekof": weekof,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "options": {"expiry": options_expiry, "maxPain": max_pain, "topPuts": top_puts, "topCalls": top_calls}
+              "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
+              "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts or [], "topCalls": ndx_top_calls or []},
+              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []}
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
