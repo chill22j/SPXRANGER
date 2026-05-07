@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a0a0f">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SPX Weekly Range Calculator</title>
+<title>Weekly Range Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -28,35 +28,43 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; padding:32px 20px env(safe-area-inset-bottom); }
   .container { max-width:680px; margin:0 auto; }
-  header { margin-bottom:36px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+  header { margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border); }
   .header-top { display:flex; align-items:baseline; gap:12px; margin-bottom:6px; }
   h1 { font-family:var(--font-mono); font-size:18px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); }
   .version { font-family:var(--font-mono); font-size:11px; color:var(--muted2); }
   .subtitle { font-size:12px; color:var(--muted2); }
+
+  /* Tab bar */
+  .tab-bar { display:flex; gap:6px; margin-bottom:18px; border:1px solid var(--border); border-radius:6px; padding:4px; background:var(--surface); }
+  .tab-btn { flex:1; background:transparent; border:none; color:var(--muted2); font-family:var(--font-mono); font-size:13px; font-weight:500; letter-spacing:0.08em; padding:10px 8px; cursor:pointer; border-radius:4px; transition:all 0.15s; text-transform:uppercase; }
+  .tab-btn:hover:not(:disabled) { color:var(--text); background:var(--surface2); }
+  .tab-btn.active { background:var(--surface2); color:var(--accent); }
+  .tab-btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .tab-btn .tab-sub { font-size:9px; font-weight:400; letter-spacing:0.06em; color:var(--muted2); display:block; margin-top:2px; text-transform:none; }
+  .tab-btn.active .tab-sub { color:var(--accent); opacity:0.7; }
+
   .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:16px; }
   .card-title { font-family:var(--font-mono); font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted2); margin-bottom:16px; }
   .input-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
   .input-group label { display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:6px; }
   input[type=number],input[type=text] { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font-mono); font-size:14px; padding:10px 12px; outline:none; -webkit-appearance:none; }
   input:focus { border-color:var(--accent3); }
-  .fetch-btn { width:100%; background:transparent; border:1px solid var(--accent3); border-radius:4px; color:var(--accent3); font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:0.08em; padding:11px; cursor:pointer; transition:all 0.15s; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; }
-  .fetch-btn:hover { background:rgba(74,159,240,0.08); }
-  .fetch-btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .fetch-btn { width:100%; background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--muted2); font-family:var(--font-mono); font-size:11px; padding:10px; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:default; }
   .fetch-status { font-family:var(--font-mono); font-size:11px; color:var(--muted2); margin-bottom:10px; min-height:16px; }
   .fetch-status.ok { color:var(--accent); }
   .fetch-status.err { color:var(--accent2); }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .spinner { display:inline-block; width:12px; height:12px; border:2px solid var(--accent3); border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite; }
   .calc-btn { width:100%; background:var(--accent); border:none; border-radius:4px; color:#0a0a0f; font-family:var(--font-mono); font-size:12px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:14px; cursor:pointer; }
   .calc-btn:hover { opacity:0.88; }
   .save-btn { width:100%; background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--muted2); font-family:var(--font-mono); font-size:11px; padding:10px; cursor:pointer; margin-top:8px; }
   .save-btn:hover { border-color:var(--accent); color:var(--accent); }
-  .regime-badge { padding:12px 14px; border-radius:4px; font-family:var(--font-mono); font-size:12px; display:flex; align-items:center; gap:10px; }
+  .regime-badge { padding:12px 14px; border-radius:4px; font-family:var(--font-mono); font-size:12px; display:flex; align-items:center; gap:10px; line-height:1.5; }
   .regime-low { background:#0d1f17; border:1px solid #1a3d2a; color:var(--accent); }
   .regime-high { background:#1f0d0d; border:1px solid #3d1a1a; color:var(--accent2); }
+  .regime-neutral { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
   .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .dot-low { background:var(--accent); }
   .dot-high { background:var(--accent2); }
+  .dot-neutral { background:var(--accent3); }
   .vol-info { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
   .vol-stat { background:var(--surface2); border-radius:4px; padding:10px 12px; }
   .vol-stat-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:4px; }
@@ -74,6 +82,24 @@
   .result-mid-box { background:var(--surface2); border-radius:4px; padding:10px 14px; }
   .result-mid-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:4px; }
   .result-mid-val { font-family:var(--font-mono); font-size:16px; font-weight:500; }
+
+  /* Options card */
+  .options-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .options-stat { background:var(--surface2); border-radius:4px; padding:10px 12px; }
+  .options-stat-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:4px; }
+  .options-stat-val { font-family:var(--font-mono); font-size:16px; font-weight:500; }
+  .options-stat-val.bullish { color:var(--accent); }
+  .options-stat-val.bearish { color:var(--accent2); }
+  .options-stat-val.neutral { color:var(--text); }
+  .walls-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .wall-box { background:var(--surface2); border-radius:4px; padding:12px; }
+  .wall-label { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); margin-bottom:8px; }
+  .wall-item { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; padding:4px 0; border-bottom:1px solid var(--border); }
+  .wall-item:last-child { border-bottom:none; }
+  .wall-strike { color:var(--text); }
+  .wall-oi { color:var(--muted2); }
+  .options-note { font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.6; }
+
   .mult-table { width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11px; }
   .mult-table th { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); padding:6px 8px; text-align:left; border-bottom:1px solid var(--border); }
   .mult-table td { padding:8px; border-bottom:1px solid var(--surface2); color:var(--text); }
@@ -85,33 +111,53 @@
   .note-row code { color:var(--text); }
   .history-row { display:grid; grid-template-columns:1fr 80px 80px 80px 28px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--surface2); font-family:var(--font-mono); font-size:11px; }
   .history-date { color:var(--muted2); }
+  .history-close { color:var(--text); }
   .history-low { color:var(--accent); }
   .history-high { color:var(--accent2); }
   .del-btn { background:none; border:none; color:var(--muted2); cursor:pointer; font-size:14px; padding:0; }
   .del-btn:hover { color:var(--accent2); }
   .empty-state { font-family:var(--font-mono); font-size:11px; color:var(--muted2); padding:10px 0; }
-  @media (max-width:480px) { body { padding:20px 14px; } h1 { font-size:15px; } .input-grid { grid-template-columns:1fr; } .result-value { font-size:24px; } .history-row { grid-template-columns:1fr 65px 65px 65px 24px; font-size:10px; } }
+  @media (max-width:480px) {
+    body { padding:20px 14px; }
+    h1 { font-size:15px; }
+    .input-grid { grid-template-columns:1fr; }
+    .result-value { font-size:24px; }
+    .history-row { grid-template-columns:1fr 65px 65px 65px 24px; font-size:10px; }
+    .options-grid { grid-template-columns:1fr; }
+    .walls-row { grid-template-columns:1fr; }
+    .tab-btn { font-size:11px; padding:8px 4px; }
+    .tab-btn .tab-sub { display:none; }
+  }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>SPX Weekly Range Calculator</h1><span class="version">v4.6</span></div>
-    <div class="subtitle">SPX Weekly Range Predictor — Auto-updating every Saturday</div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.0</span></div>
+    <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-ticker="SPX" onclick="switchTicker('SPX')">SPX<span class="tab-sub">S&amp;P 500</span></button>
+    <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX<span class="tab-sub">Nasdaq 100</span></button>
+    <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ<span class="tab-sub">QQQ ETF</span></button>
+    <button class="tab-btn" disabled title="Coming soon">SUMMARY<span class="tab-sub">Coming soon</span></button>
+  </div>
+
   <div class="card">
     <div class="card-title">Market Inputs — Friday Close</div>
     <div class="input-grid">
-      <div class="input-group"><label>SPX Close</label><input type="number" id="spx" placeholder="6816.89" step="0.01" inputmode="decimal"></div>
-      <div class="input-group"><label>VIX Close</label><input type="number" id="vix" placeholder="19.23" step="0.01" inputmode="decimal"></div>
-      <div class="input-group"><label>HV20 % (optional)</label><input type="number" id="hv20" placeholder="19.55" step="0.1" inputmode="decimal"></div>
-      <div class="input-group"><label>Week of</label><input type="text" id="weekof" placeholder="4/13–4/17"></div>
+      <div class="input-group"><label id="closeLabel">SPX Close</label><input type="number" id="close" step="0.01" inputmode="decimal"></div>
+      <div class="input-group"><label id="volLabel">VIX Close</label><input type="number" id="vol" step="0.01" inputmode="decimal"></div>
+      <div class="input-group"><label>Stretch (vs MA50)</label><input type="number" id="stretch" step="0.01" inputmode="decimal"></div>
+      <div class="input-group"><label>Week of</label><input type="text" id="weekof" placeholder="—"></div>
     </div>
-    <div class="fetch-btn" style="cursor:default;opacity:0.55;justify-content:center;"><span>📅 Loaded from Saturday auto-update</span></div>
+    <div class="fetch-btn"><span>📅 Loaded from Saturday auto-update</span></div>
     <div class="fetch-status" id="fetchStatus"></div>
-    <button class="calc-btn" onclick="calculate()">Calculate SPX Weekly Ranges</button>
+    <button class="calc-btn" onclick="calculate()">Calculate <span id="calcTickerLabel">SPX</span> Weekly Range</button>
     <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
   </div>
+
   <div class="card" id="regimeCard" style="display:none">
     <div class="card-title">Volatility Regime</div>
     <div id="regimeBadge"></div>
@@ -121,24 +167,25 @@
       <div class="vol-stat"><div class="vol-stat-label">High Mult</div><div class="vol-stat-val" id="highMult">—</div></div>
     </div>
   </div>
+
   <div class="card" id="resultCard" style="display:none">
-    <div class="card-title">Predicted SPX Weekly Range — <span id="resultWeek"></span></div>
+    <div class="card-title">Predicted <span id="resultTicker">SPX</span> Weekly Range — <span id="resultWeek"></span></div>
     <div class="result-grid">
-      <div class="result-box"><div class="result-label result-label-low">SPX Weekly Low</div><div class="result-value result-value-low" id="resLow">—</div><div class="result-pct" id="resLowPct">—</div></div>
-      <div class="result-box"><div class="result-label result-label-high">SPX Weekly High</div><div class="result-value result-value-high" id="resHigh">—</div><div class="result-pct" id="resHighPct">—</div></div>
+      <div class="result-box"><div class="result-label result-label-low"><span id="resultTickerLow">SPX</span> Weekly Low</div><div class="result-value result-value-low" id="resLow">—</div><div class="result-pct" id="resLowPct">—</div></div>
+      <div class="result-box"><div class="result-label result-label-high"><span id="resultTickerHigh">SPX</span> Weekly High</div><div class="result-value result-value-high" id="resHigh">—</div><div class="result-pct" id="resHighPct">—</div></div>
     </div>
     <div class="result-mid">
       <div class="result-mid-box"><div class="result-mid-label">Midpoint</div><div class="result-mid-val" id="resMid">—</div></div>
       <div class="result-mid-box"><div class="result-mid-label">Range Width</div><div class="result-mid-val" id="resWidth">—</div></div>
     </div>
   </div>
+
   <div class="card" id="optionsCard" style="display:none">
     <div class="card-title">Options Flow — <span id="optionsExpiry">—</span></div>
-    <div class="options-fetch-btn" id="optionsFetchBtn" style="cursor:default;"></div>
     <div class="options-grid">
       <div class="options-stat"><div class="options-stat-label">Max Pain</div><div class="options-stat-val neutral" id="optMaxPain">—</div></div>
-      <div class="options-stat"><div class="options-stat-label">vs VIX Low</div><div class="options-stat-val" id="optVsLow">—</div></div>
-      <div class="options-stat"><div class="options-stat-label">Adj Low</div><div class="options-stat-val bearish" id="optAdjLow">—</div></div>
+      <div class="options-stat"><div class="options-stat-label">vs Predicted Low</div><div class="options-stat-val neutral" id="optVsLow">—</div></div>
+      <div class="options-stat"><div class="options-stat-label">Adj Low</div><div class="options-stat-val neutral" id="optAdjLow">—</div></div>
     </div>
     <div class="walls-row">
       <div class="wall-box"><div class="wall-label">Put Walls ↓</div><div id="putWallsList"></div></div>
@@ -146,155 +193,328 @@
     </div>
     <div class="options-note" id="optionsNote"></div>
   </div>
-    <div class="card">
-    <div class="card-title">Formula Reference</div>
-    <table class="mult-table">
-      <thead><tr><th>VIX</th><th>Regime</th><th>Vol Input</th><th>k (Low/High)</th><th>Confidence</th></tr></thead>
-      <tbody>
-        <tr><td>&lt; 21</td><td><span class="tag tag-low-v">Calm</span></td><td>VIX</td><td>1.45 / 1.35</td><td><span class="accuracy">High</span></td></tr>
-        <tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>VIX</td><td>1.55 / 1.50</td><td><span class="accuracy">High</span></td></tr>
-      </tbody>
-    </table>
-    <div class="note-row">Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 30 weeks of 2026 data. Avg error: ~12 pts (neutral zone). SPX only.<br>Stretch adjustment: when SPX is >4% above MA50, kLow×1.25. Stressed kHigh base raised to 1.55.</div>
-  </div>
+
   <div class="card">
-    <div class="card-title">Prediction History</div>
+    <div class="card-title">Formula Reference</div>
+    <table class="mult-table" id="formulaTable"></table>
+    <div class="note-row" id="formulaNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Prediction History — <span id="historyTicker">SPX</span></div>
     <div id="historyContainer"><div class="empty-state">No predictions saved yet.</div></div>
   </div>
 </div>
-<script>
-  let history = JSON.parse(localStorage.getItem('SPX Weekly_history') || '[]');
-  let lastResult = null;
 
+<script>
+  // ======= Multi-ticker config =======
+  const TICKER_CONFIG = {
+    SPX: {
+      label: 'SPX', longLabel: 'S&P 500',
+      closeField: 'spx', volField: 'vix', ma50Field: 'ma50', stretchField: 'stretch', optionsField: 'options',
+      volLabel: 'VIX',
+      formula: {
+        type: 'spx',
+        regimes: { calm: { kLow: 1.45, kHigh: 1.35 }, stressed: { kLow: 1.55, kHigh: 1.55 } },
+        stressedAt: 21,
+        upMult: { threshold: 4, factor: 1.25, target: 'kLow' },
+        downMult: null
+      }
+    },
+    NDX: {
+      label: 'NDX', longLabel: 'Nasdaq 100',
+      closeField: 'ndx', volField: 'vxn', ma50Field: 'ndxMa50', stretchField: 'ndxStretch', optionsField: 'ndxOptions',
+      volLabel: 'VXN',
+      formula: {
+        type: 'ndx',
+        base: { kLow: 1.53, kHigh: 1.50 },
+        upMult: null,
+        downMult: { threshold: -3, factor: 1.10, target: 'kHigh' }
+      }
+    },
+    QQQ: {
+      label: 'QQQ', longLabel: 'QQQ ETF',
+      closeField: 'qqq', volField: 'vxn', ma50Field: 'ndxMa50', stretchField: 'ndxStretch', optionsField: 'qqqOptions',
+      volLabel: 'VXN',
+      formula: { type: 'qqq-from-ndx' }
+    }
+  };
+
+  // ======= State =======
+  let currentTicker = 'SPX';
+  let marketData = null;     // raw market.json
+  let lastResult = null;     // most recent prediction for currentTicker
+  let history = {
+    SPX: JSON.parse(localStorage.getItem('pvi_history_SPX') || '[]'),
+    NDX: JSON.parse(localStorage.getItem('pvi_history_NDX') || '[]'),
+    QQQ: JSON.parse(localStorage.getItem('pvi_history_QQQ') || '[]')
+  };
+
+  // ======= Data load =======
   async function loadLatestData() {
     const status = document.getElementById('fetchStatus');
     try {
       const res = await fetch('data/market.json?_=' + Date.now());
       if (!res.ok) throw new Error('not found');
-      const d = await res.json();
-      populateFields(d);
-      const updated = d.updated ? new Date(d.updated).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : d.date;
+      marketData = await res.json();
+      const updated = marketData.updated
+        ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        : (marketData.date || '');
       status.className = 'fetch-status ok';
-      status.textContent = '✓ Auto-loaded: SPX ' + d.spx.toLocaleString() + ' | VIX ' + d.vix + ' | as of ' + updated;
-    
-        window.marketStretch = (typeof d.stretch === 'number') ? d.stretch : null;
-        window.marketMA50 = (typeof d.ma50 === 'number') ? d.ma50 : null;
-        if (d.options && d.options.maxPain) {
-          document.getElementById('optionsCard').style.display = 'block';
-          renderOptionsData({maxPain:d.options.maxPain,expiry:d.options.expiry||'',topPuts:d.options.topPuts||[],topCalls:d.options.topCalls||[]}, null);
-          document.getElementById('optionsFetchBtn').textContent = '✓ Options loaded from Saturday update';
-        }
-    
-        // Auto-load options data if present in market.json
-        if (d.options && d.options.maxPain) {
-          document.getElementById('optionsCard').style.display = 'block';
-          renderOptionsData({
-            maxPain: d.options.maxPain,
-            expiry:  d.options.expiry  || '',
-            topPuts: d.options.topPuts  || [],
-            topCalls:d.options.topCalls || []
-          }, null);
-          document.getElementById('optionsFetchBtn').textContent = '✓ Loaded from Saturday update';
-        }
-    } catch(e) { status.className='fetch-status err'; status.textContent='Could not load market data. Use the fetch button to load live prices.'; }
-  }
-
-  async function fetchMarketData(silent = false) {
-    const btn = document.getElementById('fetchBtn');
-    const icon = document.getElementById('fetchIcon');
-    const label = document.getElementById('fetchLabel');
-    const status = document.getElementById('fetchStatus');
-    btn.disabled = true;
-    icon.innerHTML = '<span class="spinner"></span>';
-    label.textContent = 'Fetching…';
-    if (!silent) { status.className = 'fetch-status'; status.textContent = 'Contacting Yahoo Finance…'; }
-    try {
-      const PROXY = 'https://corsproxy.io/?';
-      const YF = 'https://query1.finance.yahoo.com/v8/finance/chart/';
-      const OPTS = '?interval=1d&range=5d';
-      const [spxRes, vixRes] = await Promise.all([
-        fetch(PROXY + encodeURIComponent(YF + '%5EGSPC' + OPTS)),
-        fetch(PROXY + encodeURIComponent(YF + '%5EVIX' + OPTS))
-      ]);
-      if (!spxRes.ok || !vixRes.ok) throw new Error('HTTP ' + spxRes.status);
-      const [spxJson, vixJson] = await Promise.all([spxRes.json(), vixRes.json()]);
-      const spx = +spxJson.chart.result[0].meta.regularMarketPrice.toFixed(2);
-      const vix = +vixJson.chart.result[0].meta.regularMarketPrice.toFixed(2);
-      const ts = spxJson.chart.result[0].timestamp;
-      const dt = new Date(ts[ts.length-1] * 1000);
-      const dow = dt.getDay();
-      const toMon = dow === 5 ? 3 : dow === 6 ? 2 : 1;
-      const mon = new Date(dt); mon.setDate(dt.getDate() + toMon);
-      const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
-      const fmt = d => (d.getMonth()+1) + '/' + d.getDate();
-      populateFields({ spx, vix, weekof: fmt(mon) + '–' + fmt(fri) });
-      status.className = 'fetch-status ok';
-      status.textContent = '⚠ Live price (mid-week): SPX ' + spx.toLocaleString() + ' | VIX ' + vix + ' — use Friday close for predictions';
-    } catch(err) {
+      status.textContent = '✓ Auto-loaded as of ' + updated;
+      renderTicker();
+    } catch (e) {
       status.className = 'fetch-status err';
-      status.textContent = '✗ Fetch failed (' + err.message + ') — enter manually.';
+      status.textContent = 'Could not load market data. Enter manually below.';
     }
-    btn.disabled = false;
-    icon.textContent = '⟳';
-    label.textContent = 'Auto-fetch latest SPX & VIX';
   }
 
-  function populateFields(d) {
-    if (d.spx)    document.getElementById('spx').value = d.spx;
-    if (d.vix)    document.getElementById('vix').value = d.vix;
-    if (d.hv20)   document.getElementById('hv20').value = d.hv20;
-    if (d.weekof) document.getElementById('weekof').value = d.weekof;
+  // ======= Ticker switching =======
+  function switchTicker(ticker) {
+    if (!TICKER_CONFIG[ticker]) return;
+    currentTicker = ticker;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.ticker === ticker);
+    });
+    // Hide result/regime/options cards on switch — user re-runs Calculate
+    document.getElementById('regimeCard').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('saveBtn').style.display = 'none';
+    lastResult = null;
+    renderTicker();
   }
 
-  function calculate() {
-    const spx = parseFloat(document.getElementById('spx').value);
-    const vix = parseFloat(document.getElementById('vix').value);
-    const weekof = document.getElementById('weekof').value || '—';
-    if (isNaN(spx) || isNaN(vix)) { alert('Please enter SPX Close and VIX.'); return; }
-    const isStressed = vix >= 21;
-    let kLow  = isStressed ? 1.55 : 1.45;
-    let kHigh = isStressed ? 1.55 : 1.35;
-    // Stretch-based adjustment using MA50
-    const stretch = window.marketStretch;  // set by loadLatestData
+  function renderTicker() {
+    const cfg = TICKER_CONFIG[currentTicker];
+    // Update labels
+    document.getElementById('closeLabel').textContent = cfg.label + ' Close';
+    document.getElementById('volLabel').textContent = cfg.volLabel + ' Close';
+    document.getElementById('calcTickerLabel').textContent = cfg.label;
+    document.getElementById('resultTicker').textContent = cfg.label;
+    document.getElementById('resultTickerLow').textContent = cfg.label;
+    document.getElementById('resultTickerHigh').textContent = cfg.label;
+    document.getElementById('historyTicker').textContent = cfg.label;
+    // Populate inputs from market data
+    if (marketData) {
+      const close = marketData[cfg.closeField];
+      const vol = marketData[cfg.volField];
+      const stretch = marketData[cfg.stretchField];
+      if (close != null) document.getElementById('close').value = close;
+      else document.getElementById('close').value = '';
+      if (vol != null) document.getElementById('vol').value = vol;
+      else document.getElementById('vol').value = '';
+      if (stretch != null) document.getElementById('stretch').value = stretch;
+      else document.getElementById('stretch').value = '';
+      if (marketData.weekof) document.getElementById('weekof').value = marketData.weekof;
+    }
+    // Update formula reference table
+    renderFormulaReference();
+    // Render options for this ticker (auto-display if data present)
+    renderOptionsForCurrentTicker();
+    // Render history
+    renderHistory();
+  }
+
+  function renderFormulaReference() {
+    const cfg = TICKER_CONFIG[currentTicker];
+    const tbl = document.getElementById('formulaTable');
+    const note = document.getElementById('formulaNote');
+    if (cfg.formula.type === 'spx') {
+      tbl.innerHTML = '<thead><tr><th>VIX</th><th>Regime</th><th>k (Low/High)</th><th>Confidence</th></tr></thead>' +
+        '<tbody>' +
+        '<tr><td>&lt; 21</td><td><span class="tag tag-low-v">Calm</span></td><td>1.45 / 1.35</td><td><span class="accuracy">High</span></td></tr>' +
+        '<tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>1.55 / 1.55</td><td><span class="accuracy">High</span></td></tr>' +
+        '</tbody>';
+      note.innerHTML = 'Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 30 weeks of 2026 data. Stretch >+4% above MA50 → kLow×1.25.';
+    } else if (cfg.formula.type === 'ndx') {
+      tbl.innerHTML = '<thead><tr><th>Base</th><th>k (Low/High)</th><th>Down adj</th><th>Confidence</th></tr></thead>' +
+        '<tbody>' +
+        '<tr><td>Single regime</td><td>1.53 / 1.50</td><td>kHigh×1.10 if stretch &lt; −3%</td><td><span class="accuracy">Medium-High</span></td></tr>' +
+        '</tbody>';
+      note.innerHTML = 'Formula: <code>round(Close × (1 ∓ k × VXN/100 × √(5/252)))</code><br>Calibrated on 30 weeks. NDX has no up-stretch multiplier.';
+    } else {
+      tbl.innerHTML = '<thead><tr><th>Method</th><th>Source</th><th>Confidence</th></tr></thead>' +
+        '<tbody>' +
+        '<tr><td>NDX prediction × QQQ/NDX ratio</td><td>Derived</td><td><span class="accuracy">High</span></td></tr>' +
+        '</tbody>';
+      note.innerHTML = 'QQQ tracks NDX with ratio mean 0.02434 (stdev 0.00001). Derived QQQ_Low = round(NDX_Low × QQQ/NDX).';
+    }
+  }
+
+  // ======= Prediction logic =======
+  function predictSPX(close, vol, stretch) {
+    const f = TICKER_CONFIG.SPX.formula;
+    const isStressed = vol >= f.stressedAt;
+    let kLow = isStressed ? f.regimes.stressed.kLow : f.regimes.calm.kLow;
+    let kHigh = isStressed ? f.regimes.stressed.kHigh : f.regimes.calm.kHigh;
     let stretchNote = '';
-    if (stretch !== null && stretch !== undefined) {
-      if (stretch > 4) {
-        kLow *= 1.25;
-        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×1.25';
+    if (stretch != null && !isNaN(stretch)) {
+      if (stretch > f.upMult.threshold) {
+        if (f.upMult.target === 'kLow') kLow *= f.upMult.factor;
+        else kHigh *= f.upMult.factor;
+        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% → kLow×' + f.upMult.factor;
       } else if (stretch < -4) {
         stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% (no adj)';
       } else {
         stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
       }
     }
-    const wv = (vix/100) * Math.sqrt(5/252);
-    const pviLow = Math.round(spx * (1 - kLow*wv));
-    const pviHigh = Math.round(spx * (1 + kHigh*wv));
-    const mid = Math.round((pviLow+pviHigh)/2);
-    const width = pviHigh - pviLow;
-    document.getElementById('regimeCard').style.display = 'block';
-    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge ' + (isStressed?'regime-high':'regime-low') + '"><span class="dot ' + (isStressed?'dot-high':'dot-low') + '"></span>' + (isStressed?'Stressed':'Calm') + ' — VIX ' + vix.toFixed(2) + ' → kLow=' + kLow.toFixed(2) + ' kHigh=' + kHigh.toFixed(2) + ' | weekly vol=' + (wv*100).toFixed(2) + '%' + stretchNote + '</div>';
-    document.getElementById('effVol').textContent = vix.toFixed(1) + '%';
-    document.getElementById('lowMult').textContent  = (1-kLow*wv).toFixed(4);
-    document.getElementById('highMult').textContent = (1+kHigh*wv).toFixed(4);
-    document.getElementById('resultCard').style.display = 'block';
-    document.getElementById('resultWeek').textContent = weekof;
-    document.getElementById('resLow').textContent = pviLow.toLocaleString();
-    document.getElementById('resHigh').textContent = pviHigh.toLocaleString();
-    document.getElementById('resLowPct').textContent = ((pviLow-spx)/spx*100).toFixed(1) + '% from close';
-    document.getElementById('resHighPct').textContent = '+' + ((pviHigh-spx)/spx*100).toFixed(1) + '% from close';
-    document.getElementById('resMid').textContent = mid.toLocaleString();
-    document.getElementById('resWidth').textContent = width.toLocaleString() + ' pts (±' + ((width/spx/2)*100).toFixed(1) + '%)';
-    document.getElementById('saveBtn').style.display = 'block';
-    document.getElementById('optionsCard').style.display = 'block';
-    lastResult = { spx, vix, pviLow, pviHigh, weekof, regime: isStressed?'Stressed':'Calm' };
+    const wv = (vol / 100) * Math.sqrt(5 / 252);
+    return {
+      kLow, kHigh, wv,
+      low: Math.round(close * (1 - kLow * wv)),
+      high: Math.round(close * (1 + kHigh * wv)),
+      regime: isStressed ? 'Stressed' : 'Calm',
+      regimeClass: isStressed ? 'high' : 'low',
+      stretchNote
+    };
   }
 
+  function predictNDX(close, vol, stretch) {
+    const f = TICKER_CONFIG.NDX.formula;
+    let kLow = f.base.kLow;
+    let kHigh = f.base.kHigh;
+    let stretchNote = '';
+    if (stretch != null && !isNaN(stretch)) {
+      if (stretch > 3) {
+        stretchNote = ' | Stretched up ' + stretch.toFixed(1) + '% (no adj for NDX)';
+      } else if (stretch < f.downMult.threshold) {
+        if (f.downMult.target === 'kHigh') kHigh *= f.downMult.factor;
+        else kLow *= f.downMult.factor;
+        stretchNote = ' | Stretched down ' + stretch.toFixed(1) + '% → kHigh×' + f.downMult.factor;
+      } else {
+        stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
+      }
+    }
+    const wv = (vol / 100) * Math.sqrt(5 / 252);
+    return {
+      kLow, kHigh, wv,
+      low: Math.round(close * (1 - kLow * wv)),
+      high: Math.round(close * (1 + kHigh * wv)),
+      regime: 'Single base',
+      regimeClass: 'neutral',
+      stretchNote
+    };
+  }
+
+  function predictQQQ(qqqClose) {
+    // Need NDX prediction first; pull NDX inputs from market data
+    if (!marketData) return null;
+    const ndxClose = marketData.ndx;
+    const ndxVol = marketData.vxn;
+    const ndxStretch = marketData.ndxStretch;
+    if (ndxClose == null || ndxVol == null) return null;
+    const ndxPred = predictNDX(ndxClose, ndxVol, ndxStretch);
+    const ratio = qqqClose / ndxClose;
+    return {
+      kLow: ndxPred.kLow, kHigh: ndxPred.kHigh, wv: ndxPred.wv,
+      low: Math.round(ndxPred.low * ratio),
+      high: Math.round(ndxPred.high * ratio),
+      regime: 'Derived from NDX',
+      regimeClass: 'neutral',
+      stretchNote: ' | Ratio QQQ/NDX = ' + ratio.toFixed(5),
+      ndxPred
+    };
+  }
+
+  function calculate() {
+    const cfg = TICKER_CONFIG[currentTicker];
+    const close = parseFloat(document.getElementById('close').value);
+    const vol = parseFloat(document.getElementById('vol').value);
+    const stretchRaw = document.getElementById('stretch').value;
+    const stretch = stretchRaw === '' ? null : parseFloat(stretchRaw);
+    const weekof = document.getElementById('weekof').value || '—';
+    if (isNaN(close) || isNaN(vol)) { alert('Please enter ' + cfg.label + ' Close and ' + cfg.volLabel + '.'); return; }
+
+    let result;
+    if (cfg.formula.type === 'spx')        result = predictSPX(close, vol, stretch);
+    else if (cfg.formula.type === 'ndx')   result = predictNDX(close, vol, stretch);
+    else                                   result = predictQQQ(close);
+
+    if (!result) { alert('Cannot compute QQQ — NDX market data unavailable.'); return; }
+
+    const mid = Math.round((result.low + result.high) / 2);
+    const width = result.high - result.low;
+
+    // Render regime card
+    document.getElementById('regimeCard').style.display = 'block';
+    const regimeText = cfg.formula.type === 'qqq-from-ndx'
+      ? '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — using NDX prediction × QQQ/NDX ratio' + result.stretchNote
+      : '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — ' + cfg.volLabel + ' ' + vol.toFixed(2) + ' → kLow=' + result.kLow.toFixed(2) + ' kHigh=' + result.kHigh.toFixed(2) + ' | weekly vol=' + (result.wv * 100).toFixed(2) + '%' + result.stretchNote;
+    document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge regime-' + result.regimeClass + '">' + regimeText + '</div>';
+    document.getElementById('effVol').textContent = vol.toFixed(1) + '%';
+    document.getElementById('lowMult').textContent = (1 - result.kLow * result.wv).toFixed(4);
+    document.getElementById('highMult').textContent = (1 + result.kHigh * result.wv).toFixed(4);
+
+    // Render result card
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultWeek').textContent = weekof;
+    document.getElementById('resLow').textContent = result.low.toLocaleString();
+    document.getElementById('resHigh').textContent = result.high.toLocaleString();
+    document.getElementById('resLowPct').textContent = ((result.low - close) / close * 100).toFixed(1) + '% from close';
+    document.getElementById('resHighPct').textContent = '+' + ((result.high - close) / close * 100).toFixed(1) + '% from close';
+    document.getElementById('resMid').textContent = mid.toLocaleString();
+    document.getElementById('resWidth').textContent = width.toLocaleString() + ' pts (±' + ((width / close / 2) * 100).toFixed(1) + '%)';
+
+    document.getElementById('saveBtn').style.display = 'block';
+
+    lastResult = { ticker: currentTicker, close, vol, stretch, low: result.low, high: result.high, weekof, regime: result.regime };
+    // Re-render options now that we have a predicted Low for comparison
+    renderOptionsForCurrentTicker();
+  }
+
+  // ======= Options rendering =======
+  function renderOptionsForCurrentTicker() {
+    const cfg = TICKER_CONFIG[currentTicker];
+    const card = document.getElementById('optionsCard');
+    if (!marketData) { card.style.display = 'none'; return; }
+    const opts = marketData[cfg.optionsField];
+    if (!opts || opts.maxPain == null) { card.style.display = 'none'; return; }
+
+    card.style.display = 'block';
+    const predLow = lastResult ? lastResult.low : null;
+    const mp = opts.maxPain;
+    const tp = opts.topPuts || [];
+    const tc = opts.topCalls || [];
+
+    document.getElementById('optionsExpiry').textContent = opts.expiry ? (opts.expiry + ' expiry') : '—';
+    document.getElementById('optMaxPain').textContent = mp ? mp.toLocaleString() : '—';
+
+    const diff = (predLow != null && mp != null) ? mp - predLow : null;
+    const vsEl = document.getElementById('optVsLow');
+    vsEl.textContent = diff !== null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '—';
+    vsEl.className = 'options-stat-val ' + (diff === null ? 'neutral' : diff < 0 ? 'bearish' : 'bullish');
+
+    const adj = (mp && predLow && mp < predLow) ? mp : (predLow || mp);
+    document.getElementById('optAdjLow').textContent = adj ? adj.toLocaleString() : '—';
+
+    document.getElementById('putWallsList').innerHTML = tp.length
+      ? tp.map(w => '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() + '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>').join('')
+      : '<div class="empty-state">—</div>';
+    document.getElementById('callWallsList').innerHTML = tc.length
+      ? tc.map(w => '<div class="wall-item"><span class="wall-strike">' + w.strike.toLocaleString() + '</span><span class="wall-oi">' + w.oi.toLocaleString() + ' OI</span></div>').join('')
+      : '<div class="empty-state">—</div>';
+
+    let note = '';
+    if (mp && predLow) {
+      note = mp < predLow
+        ? 'Max pain (' + mp.toLocaleString() + ') < Predicted Low → anchoring Low down'
+        : 'Max pain (' + mp.toLocaleString() + ') ≥ Predicted Low — no adjustment';
+    } else if (mp) {
+      note = 'Max pain: ' + mp.toLocaleString() + ' | Run Calculate to compare vs Predicted Low';
+    }
+    const sp = tp.find(w => !predLow || w.strike < (predLow - (predLow * 0.02)));
+    if (sp) note += ' | Watch put wall at ' + sp.strike.toLocaleString() + ' (' + sp.oi.toLocaleString() + ' OI)';
+    document.getElementById('optionsNote').textContent = note;
+  }
+
+  // ======= History =======
   function saveToHistory() {
     if (!lastResult) return;
-    history.unshift({ ...lastResult, savedAt: new Date().toLocaleDateString() });
-    if (history.length > 20) history = history.slice(0,20);
-    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
+    const t = lastResult.ticker;
+    history[t].unshift({ ...lastResult, savedAt: new Date().toLocaleDateString() });
+    if (history[t].length > 20) history[t] = history[t].slice(0, 20);
+    localStorage.setItem('pvi_history_' + t, JSON.stringify(history[t]));
     renderHistory();
     const btn = document.getElementById('saveBtn');
     btn.textContent = '✓ Saved';
@@ -302,128 +522,30 @@
   }
 
   function deleteHistory(i) {
-    history.splice(i,1);
-    localStorage.setItem('SPX Weekly_history', JSON.stringify(history));
+    history[currentTicker].splice(i, 1);
+    localStorage.setItem('pvi_history_' + currentTicker, JSON.stringify(history[currentTicker]));
     renderHistory();
   }
 
   function renderHistory() {
     const el = document.getElementById('historyContainer');
-    if (!history.length) { el.innerHTML = '<div class="empty-state">No predictions saved yet.</div>'; return; }
-    el.innerHTML = history.map((h,i) => '<div class="history-row"><div class="history-date">' + (h.weekof||h.savedAt) + '</div><div class="history-close">' + parseFloat(h.spx).toLocaleString() + '</div><div class="history-low">' + h.pviLow.toLocaleString() + '</div><div class="history-high">' + h.pviHigh.toLocaleString() + '</div><button class="del-btn" onclick="deleteHistory(' + i + ')">×</button></div>').join('');
+    const list = history[currentTicker];
+    if (!list.length) { el.innerHTML = '<div class="empty-state">No predictions saved yet.</div>'; return; }
+    el.innerHTML = list.map((h, i) =>
+      '<div class="history-row">' +
+        '<div class="history-date">' + (h.weekof || h.savedAt) + '</div>' +
+        '<div class="history-close">' + parseFloat(h.close).toLocaleString() + '</div>' +
+        '<div class="history-low">' + h.low.toLocaleString() + '</div>' +
+        '<div class="history-high">' + h.high.toLocaleString() + '</div>' +
+        '<button class="del-btn" onclick="deleteHistory(' + i + ')">×</button>' +
+      '</div>'
+    ).join('');
   }
 
-  renderHistory();
+  // ======= Init =======
   loadLatestData();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
-
-
-async function fetchOptionsFlow() {
-  const spx = parseFloat(document.getElementById('spx').value);
-  const pviLow = lastResult ? lastResult.pviLow : null;
-  if (!spx) { alert('Run Calculate first.'); return; }
-  const btn = document.getElementById('optionsFetchBtn');
-  const note = document.getElementById('optionsNote');
-  btn.textContent = '⟳ Fetching options…';
-  btn.disabled = true;
-  note.textContent = 'Contacting Yahoo Finance…';
-  try {
-    const PROXY = 'https://corsproxy.io/?';
-    let crumb = '';
-    await new Promise((resolve) => {
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-      iframe.src = 'https://finance.yahoo.com/quote/%5ESPX/options/';
-      iframe.onload = async () => {
-        await new Promise(r => setTimeout(r, 2500));
-        try { const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb',{credentials:'include'}); crumb = await cr.text(); } catch(e2) {}
-        try { document.body.removeChild(iframe); } catch(e3) {}
-        resolve();
-      };
-      iframe.onerror = () => { try { document.body.removeChild(iframe); } catch(e4) {} resolve(); };
-      document.body.appendChild(iframe);
-    });
-    if (!crumb || crumb.length < 3) {
-      const cr2 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v1/test/getcrumb'));
-      crumb = await cr2.text();
-    }
-    note.textContent = 'Got session, fetching options chain…';
-    const d0 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?crumb=' + encodeURIComponent(crumb))).then(r=>r.json());
-    const exps = d0?.optionChain?.result?.[0]?.expirationDates || [];
-    if (!exps.length) throw new Error('No expirations returned');
-    const now = Date.now()/1000;
-    const weekExps = exps.filter(ts => ts > now && ts < now + 8*86400);
-    const targetTs = weekExps[weekExps.length - 1];
-    if (!targetTs) throw new Error('No weekly expiry found');
-    const expDate = new Date(targetTs*1000);
-    document.getElementById('optionsExpiry').textContent = (expDate.getMonth()+1)+'/'+expDate.getDate()+' expiry';
-    const d1 = await fetch(PROXY + encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/options/%5ESPX?date='+targetTs+'&crumb='+encodeURIComponent(crumb))).then(r=>r.json());
-    const result = d1?.optionChain?.result?.[0];
-    if (!result) throw new Error('No options data');
-    const calls = result.options[0].calls || [];
-    const puts  = result.options[0].puts  || [];
-    const lo = spx*0.85, hi = spx*1.15;
-    const callOI = {}, putOI = {};
-    calls.filter(c=>c.openInterest>0&&c.strike>=lo&&c.strike<=hi).forEach(c=>callOI[c.strike]=c.openInterest);
-    puts.filter(p=>p.openInterest>0&&p.strike>=lo&&p.strike<=hi).forEach(p=>putOI[p.strike]=p.openInterest);
-    const allStrikes = [...new Set([...Object.keys(callOI),...Object.keys(putOI)].map(Number))].sort((a,b)=>a-b);
-    if (!allStrikes.length) throw new Error('No OI data in range');
-    let minPain=Infinity, maxPainStrike=null;
-    for (const s of allStrikes) {
-      const cp = Object.entries(callOI).reduce((sum,[k,oi])=>+k<s?sum+(s-+k)*oi:sum,0);
-      const pp = Object.entries(putOI).reduce((sum,[k,oi])=>+k>s?sum+(+k-s)*oi:sum,0);
-      if (cp+pp<minPain){minPain=cp+pp;maxPainStrike=s;}
-    }
-    const topPuts  = Object.entries(putOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
-    const topCalls = Object.entries(callOI).sort(([,a],[,b])=>b-a).slice(0,4).map(([k,oi])=>({strike:+k,oi}));
-    let adjLow = pviLow, adjNote = '';
-    if (maxPainStrike && pviLow && maxPainStrike < pviLow) {
-      adjLow = maxPainStrike;
-      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') < VIX Low → anchoring Low down';
-    } else if (maxPainStrike && pviLow) {
-      adjNote = 'Max pain ('+maxPainStrike.toLocaleString()+') ≥ VIX Low — no adjustment';
-    }
-    const strongestPutBelow = Object.entries(putOI).filter(([k])=>+k<spx).sort(([,a],[,b])=>b-a)[0];
-    if (strongestPutBelow && +strongestPutBelow[0] < (adjLow||spx)-150) {
-      adjNote += ' | Large put wall at '+Number(strongestPutBelow[0]).toLocaleString()+' ('+Number(strongestPutBelow[1]).toLocaleString()+' OI)';
-    }
-    document.getElementById('optMaxPain').textContent = maxPainStrike ? maxPainStrike.toLocaleString() : '—';
-    const diff = pviLow && maxPainStrike ? maxPainStrike - pviLow : null;
-    const vsEl = document.getElementById('optVsLow');
-    vsEl.textContent = diff!==null ? (diff>0?'+':'')+diff.toLocaleString() : '—';
-    vsEl.className = 'options-stat-val '+(diff===null?'neutral':diff<0?'bearish':'bullish');
-    document.getElementById('optAdjLow').textContent = adjLow ? adjLow.toLocaleString() : '—';
-    document.getElementById('putWallsList').innerHTML = topPuts.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-    document.getElementById('callWallsList').innerHTML = topCalls.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-    note.textContent = adjNote;
-  } catch(e) {
-    note.textContent = '✗ Options fetch failed: ' + e.message;
-    console.error('options error:', e);
-  }
-  btn.textContent = '⟳ Refresh Options Data';
-  btn.disabled = false;
-}
-
-function renderOptionsData(data, pviLow) {
-  const mp = data.maxPain, exp = data.expiry, tp = data.topPuts||[], tc = data.topCalls||[];
-  if (exp) document.getElementById('optionsExpiry').textContent = exp + ' expiry';
-  document.getElementById('optMaxPain').textContent = mp ? mp.toLocaleString() : '—';
-  const diff = pviLow && mp ? mp - pviLow : null;
-  const vsEl = document.getElementById('optVsLow');
-  vsEl.textContent = diff!==null?(diff>0?'+':'')+diff.toLocaleString():'—';
-  vsEl.className='options-stat-val '+(diff===null?'neutral':diff<0?'bearish':'bullish');
-  const adj=(mp&&pviLow&&mp<pviLow)?mp:pviLow;
-  document.getElementById('optAdjLow').textContent=adj?adj.toLocaleString():(mp?mp.toLocaleString():'—');
-  document.getElementById('putWallsList').innerHTML=tp.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-  document.getElementById('callWallsList').innerHTML=tc.map(w=>'<div class="wall-item"><span class="wall-strike">'+w.strike.toLocaleString()+'</span><span class="wall-oi">'+w.oi.toLocaleString()+' OI</span></div>').join('');
-  let note='';
-  if(mp&&pviLow) note=mp<pviLow?'Max pain ('+mp.toLocaleString()+') < VIX Low → anchoring Low down':'Max pain ('+mp.toLocaleString()+') ≥ VIX Low — no adjustment';
-  else if(mp) note='Max pain: '+mp.toLocaleString()+' | Run Calculate to compare vs VIX Low';
-  const sp=tp.find(w=>!pviLow||w.strike<(pviLow||99999)-150);
-  if(sp) note+=' | Watch put wall at '+sp.strike.toLocaleString()+' ('+sp.oi.toLocaleString()+' OI)';
-  document.getElementById('optionsNote').textContent=note;
-}
 </script>
 </body>
 </html>
