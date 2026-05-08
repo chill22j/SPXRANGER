@@ -100,15 +100,6 @@
   .wall-oi { color:var(--muted2); }
   .options-note { font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.6; }
 
-  .mult-table { width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11px; }
-  .mult-table th { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); padding:6px 8px; text-align:left; border-bottom:1px solid var(--border); }
-  .mult-table td { padding:8px; border-bottom:1px solid var(--surface2); color:var(--text); }
-  .tag { font-size:9px; padding:2px 7px; border-radius:3px; }
-  .tag-low-v { background:#0d1f17; color:var(--accent); }
-  .tag-high-v { background:#1f0d0d; color:var(--accent2); }
-  .accuracy { font-family:var(--font-mono); font-size:10px; color:var(--accent3); }
-  .note-row { margin-top:14px; font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.7; }
-  .note-row code { color:var(--text); }
   .history-row { display:grid; grid-template-columns:1fr 80px 80px 80px 28px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--surface2); font-family:var(--font-mono); font-size:11px; }
   .history-date { color:var(--muted2); }
   .history-close { color:var(--text); }
@@ -133,7 +124,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.0</span></div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.0.1</span></div>
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
@@ -192,12 +183,6 @@
       <div class="wall-box"><div class="wall-label">Call Walls ↑</div><div id="callWallsList"></div></div>
     </div>
     <div class="options-note" id="optionsNote"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Formula Reference</div>
-    <table class="mult-table" id="formulaTable"></table>
-    <div class="note-row" id="formulaNote"></div>
   </div>
 
   <div class="card">
@@ -307,38 +292,10 @@
       else document.getElementById('stretch').value = '';
       if (marketData.weekof) document.getElementById('weekof').value = marketData.weekof;
     }
-    // Update formula reference table
-    renderFormulaReference();
     // Render options for this ticker (auto-display if data present)
     renderOptionsForCurrentTicker();
     // Render history
     renderHistory();
-  }
-
-  function renderFormulaReference() {
-    const cfg = TICKER_CONFIG[currentTicker];
-    const tbl = document.getElementById('formulaTable');
-    const note = document.getElementById('formulaNote');
-    if (cfg.formula.type === 'spx') {
-      tbl.innerHTML = '<thead><tr><th>VIX</th><th>Regime</th><th>k (Low/High)</th><th>Confidence</th></tr></thead>' +
-        '<tbody>' +
-        '<tr><td>&lt; 21</td><td><span class="tag tag-low-v">Calm</span></td><td>1.45 / 1.35</td><td><span class="accuracy">High</span></td></tr>' +
-        '<tr><td>≥ 21</td><td><span class="tag tag-high-v">Stressed</span></td><td>1.55 / 1.55</td><td><span class="accuracy">High</span></td></tr>' +
-        '</tbody>';
-      note.innerHTML = 'Formula: <code>round(Close × (1 ∓ k × VIX/100 × √(5/252)))</code><br>Calibrated on 30 weeks of 2026 data. Stretch >+4% above MA50 → kLow×1.25.';
-    } else if (cfg.formula.type === 'ndx') {
-      tbl.innerHTML = '<thead><tr><th>Base</th><th>k (Low/High)</th><th>Down adj</th><th>Confidence</th></tr></thead>' +
-        '<tbody>' +
-        '<tr><td>Single regime</td><td>1.53 / 1.50</td><td>kHigh×1.10 if stretch &lt; −3%</td><td><span class="accuracy">Medium-High</span></td></tr>' +
-        '</tbody>';
-      note.innerHTML = 'Formula: <code>round(Close × (1 ∓ k × VXN/100 × √(5/252)))</code><br>Calibrated on 30 weeks. NDX has no up-stretch multiplier.';
-    } else {
-      tbl.innerHTML = '<thead><tr><th>Method</th><th>Source</th><th>Confidence</th></tr></thead>' +
-        '<tbody>' +
-        '<tr><td>NDX prediction × QQQ/NDX ratio</td><td>Derived</td><td><span class="accuracy">High</span></td></tr>' +
-        '</tbody>';
-      note.innerHTML = 'QQQ tracks NDX with ratio mean 0.02434 (stdev 0.00001). Derived QQQ_Low = round(NDX_Low × QQQ/NDX).';
-    }
   }
 
   // ======= Prediction logic =======
