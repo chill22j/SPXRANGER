@@ -100,6 +100,21 @@
   .wall-oi { color:var(--muted2); }
   .options-note { font-family:var(--font-mono); font-size:10px; color:var(--muted2); line-height:1.6; }
 
+  /* Summary table */
+  .summary-table { width:100%; border-collapse:collapse; font-family:var(--font-mono); }
+  .summary-table th { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted2); padding:10px 8px; text-align:left; border-bottom:1px solid var(--border); font-weight:500; }
+  .summary-table th.th-low { color:#4af0a080; }
+  .summary-table th.th-high { color:#f04a4a80; }
+  .summary-table td { padding:14px 8px; border-bottom:1px solid var(--surface2); font-size:14px; }
+  .summary-table tr:last-child td { border-bottom:none; }
+  .summary-table .ticker-cell { font-weight:600; color:var(--text); letter-spacing:0.05em; }
+  .summary-table .ticker-cell .ticker-sub { display:block; font-size:9px; color:var(--muted2); font-weight:400; margin-top:2px; letter-spacing:0.06em; text-transform:none; }
+  .summary-table .close-cell { color:var(--text); }
+  .summary-table .low-cell { color:var(--accent); font-weight:500; }
+  .summary-table .high-cell { color:var(--accent2); font-weight:500; }
+  .summary-table .empty-cell { color:var(--muted2); }
+  .summary-status { font-family:var(--font-mono); font-size:10px; color:var(--muted2); margin-top:14px; line-height:1.6; }
+
   .history-row { display:grid; grid-template-columns:1fr 80px 80px 80px 28px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--surface2); font-family:var(--font-mono); font-size:11px; }
   .history-date { color:var(--muted2); }
   .history-close { color:var(--text); }
@@ -118,23 +133,43 @@
     .walls-row { grid-template-columns:1fr; }
     .tab-btn { font-size:11px; padding:8px 4px; }
     .tab-btn .tab-sub { display:none; }
+    .summary-table th { font-size:8px; padding:8px 4px; }
+    .summary-table td { padding:12px 4px; font-size:13px; }
+    .summary-table .ticker-cell .ticker-sub { display:none; }
   }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.0.1</span></div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.0</span></div>
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
   <div class="tab-bar" id="tabBar">
-    <button class="tab-btn active" data-ticker="SPX" onclick="switchTicker('SPX')">SPX<span class="tab-sub">S&amp;P 500</span></button>
+    <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY<span class="tab-sub">All Tickers</span></button>
+    <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX<span class="tab-sub">S&amp;P 500</span></button>
     <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX<span class="tab-sub">Nasdaq 100</span></button>
     <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ<span class="tab-sub">QQQ ETF</span></button>
-    <button class="tab-btn" disabled title="Coming soon">SUMMARY<span class="tab-sub">Coming soon</span></button>
   </div>
 
+  <div class="card" id="summaryView">
+    <div class="card-title">Weekly Range Summary — <span id="summaryWeek">—</span></div>
+    <table class="summary-table" id="summaryTable">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Prev Close</th>
+          <th class="th-low">Predicted Low</th>
+          <th class="th-high">Predicted High</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+    <div class="summary-status" id="summaryStatus"></div>
+  </div>
+
+  <div id="tickerView" style="display:none">
   <div class="card">
     <div class="card-title">Market Inputs — Friday Close</div>
     <div class="input-grid">
@@ -189,6 +224,7 @@
     <div class="card-title">Prediction History — <span id="historyTicker">SPX</span></div>
     <div id="historyContainer"><div class="empty-state">No predictions saved yet.</div></div>
   </div>
+  </div>
 </div>
 
 <script>
@@ -226,7 +262,7 @@
   };
 
   // ======= State =======
-  let currentTicker = 'SPX';
+  let currentTicker = 'SUMMARY';
   let marketData = null;     // raw market.json
   let lastResult = null;     // most recent prediction for currentTicker
   let history = {
@@ -238,6 +274,8 @@
   // ======= Data load =======
   async function loadLatestData() {
     const status = document.getElementById('fetchStatus');
+    // Show waiting placeholder in summary view immediately
+    if (currentTicker === 'SUMMARY') renderSummary();
     try {
       const res = await fetch('data/market.json?_=' + Date.now());
       if (!res.ok) throw new Error('not found');
@@ -247,26 +285,93 @@
         : (marketData.date || '');
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded as of ' + updated;
-      renderTicker();
+      // Dispatch to whichever view is active
+      if (currentTicker === 'SUMMARY') renderSummary();
+      else renderTicker();
     } catch (e) {
       status.className = 'fetch-status err';
       status.textContent = 'Could not load market data. Enter manually below.';
+      // Show error in summary view too
+      if (currentTicker === 'SUMMARY') {
+        const body = document.getElementById('summaryBody');
+        body.innerHTML = '<tr><td colspan="4" class="empty-cell">Could not load market data.</td></tr>';
+      }
     }
   }
 
   // ======= Ticker switching =======
   function switchTicker(ticker) {
-    if (!TICKER_CONFIG[ticker]) return;
+    // SUMMARY is a special view, not in TICKER_CONFIG
+    if (ticker !== 'SUMMARY' && !TICKER_CONFIG[ticker]) return;
     currentTicker = ticker;
     document.querySelectorAll('.tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.ticker === ticker);
     });
+
+    if (ticker === 'SUMMARY') {
+      // Show summary view, hide single-ticker view
+      document.getElementById('summaryView').style.display = 'block';
+      document.getElementById('tickerView').style.display = 'none';
+      lastResult = null;
+      renderSummary();
+      return;
+    }
+
+    // Single-ticker mode
+    document.getElementById('summaryView').style.display = 'none';
+    document.getElementById('tickerView').style.display = 'block';
     // Hide result/regime/options cards on switch — user re-runs Calculate
     document.getElementById('regimeCard').style.display = 'none';
     document.getElementById('resultCard').style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
     lastResult = null;
     renderTicker();
+  }
+
+  // ======= Summary rendering =======
+  function renderSummary() {
+    const body = document.getElementById('summaryBody');
+    const status = document.getElementById('summaryStatus');
+    const weekEl = document.getElementById('summaryWeek');
+
+    if (!marketData) {
+      body.innerHTML = '<tr><td colspan="4" class="empty-cell">Waiting for market data…</td></tr>';
+      weekEl.textContent = '—';
+      status.textContent = '';
+      return;
+    }
+
+    weekEl.textContent = marketData.weekof || '—';
+
+    const rows = [];
+    for (const ticker of ['SPX', 'NDX', 'QQQ']) {
+      const cfg = TICKER_CONFIG[ticker];
+      const close = marketData[cfg.closeField];
+      const vol = marketData[cfg.volField];
+      const stretch = marketData[cfg.stretchField];
+
+      let pred = null;
+      if (close != null && (vol != null || ticker === 'QQQ')) {
+        if (cfg.formula.type === 'spx')      pred = predictSPX(close, vol, stretch);
+        else if (cfg.formula.type === 'ndx') pred = predictNDX(close, vol, stretch);
+        else                                 pred = predictQQQ(close);
+      }
+
+      rows.push(
+        '<tr>' +
+          '<td class="ticker-cell">' + cfg.label + '<span class="ticker-sub">' + cfg.longLabel + '</span></td>' +
+          '<td class="close-cell">' + (close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>') + '</td>' +
+          '<td class="' + (pred ? 'low-cell' : 'empty-cell') + '">' + (pred ? pred.low.toLocaleString() : '—') + '</td>' +
+          '<td class="' + (pred ? 'high-cell' : 'empty-cell') + '">' + (pred ? pred.high.toLocaleString() : '—') + '</td>' +
+        '</tr>'
+      );
+    }
+    body.innerHTML = rows.join('');
+
+    const updated = marketData.updated
+      ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      : (marketData.date || '');
+    status.textContent = '✓ Auto-loaded as of ' + updated + ' • Tap a ticker tab above for full details.';
   }
 
   function renderTicker() {
