@@ -1,0 +1,4 @@
+ticker,week_label,prev_close_date,prev_close,vol,stretch,predicted_low,predicted_high,friday_close_date,friday_close,result,distance
+SPX,5/4–5/8,2026-05-02,7230.12,16.99,5.98,6917,7464,,,,
+NDX,5/4–5/8,2026-05-02,27710.36,21.92,10.05,26401,28994,,,,
+QQQ,5/4–5/8,2026-05-02,674.15,21.92,10.05,642,705,,,,
