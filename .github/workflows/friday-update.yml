@@ -206,10 +206,13 @@ jobs:
           print(f"SAVED: SPX={spx} VIX={vix} MA50={ma50} stretch={stretch_pct}% maxPain={max_pain}")
           PYEOF
 
+      - name: Update scorecard
+        run: python3 scripts/update_scorecard.py
+
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/market.json
-          git diff --staged --quiet || git commit -m "chore: Saturday market update"
+          git add data/market.json data/scorecard.csv
+          git diff --staged --quiet || git commit -m "chore: Friday market update"
           git push
