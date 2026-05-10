@@ -1,8 +1,8 @@
-name: Saturday Market Update
+name: Friday Market Update
 
 on:
   schedule:
-    - cron: '0 1 * * 0'
+    - cron: '0 22 * * 5'  # Runs at 22:00 UTC (6pm ET in EDT, 5pm ET in EST), Fridays
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
           import yfinance as yf
           import urllib.request, json, math, datetime
 
-          HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+          HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}h
 
           def fetch_chart(symbol, period="3mo"):
               url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
