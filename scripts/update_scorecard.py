@@ -73,9 +73,12 @@ def grade_row(row, market, today_str):
 
 
 def next_week_label(today):
-    """Today is a Friday. Return label for the *upcoming* Mon-Fri week."""
-    monday = today + datetime.timedelta(days=3)
-    friday = today + datetime.timedelta(days=7)
+    """Return label for the upcoming Mon-Fri trading week.
+    Works regardless of which day 'today' is (handles manual workflow runs)."""
+    # Days to next Monday: 0->7, Tue->6, ... Sun->1. If today IS Monday, target the NEXT Monday.
+    days_to_monday = (7 - today.weekday()) % 7 or 7
+    monday = today + datetime.timedelta(days=days_to_monday)
+    friday = monday + datetime.timedelta(days=4)
     return f"{monday.month}/{monday.day}\u2013{friday.month}/{friday.day}"
 
 
