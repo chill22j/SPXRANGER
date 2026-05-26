@@ -27,7 +27,7 @@ def predict_spx(close, vol, stretch):
     k_low = 1.55 if is_stressed else 1.45
     k_high = 1.55 if is_stressed else 1.35
     if stretch is not None and stretch > 4:
-        k_low *= 1.25
+        k_low *= 1.06  # v5.1.1: was 1.25; recalibrated to 4-week trader avg
     wv = (vol / 100) * SQRT_5_252
     return round(close * (1 - k_low * wv)), round(close * (1 + k_high * wv))
 
