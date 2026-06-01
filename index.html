@@ -142,7 +142,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.1</span></div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.2</span></div>
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
@@ -181,7 +181,8 @@
     <div class="fetch-btn"><span>📅 Loaded from Saturday auto-update</span></div>
     <div class="fetch-status" id="fetchStatus"></div>
     <button class="calc-btn" onclick="calculate()">Calculate <span id="calcTickerLabel">SPX</span> Weekly Range</button>
-    <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
+    <button class="save-btn" onclick="openOptionsBridge()" style="border-color:var(--accent3); color:var(--text);">🔍 Fetch Live Options</button>
+    <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
   </div>
 
   <div class="card" id="regimeCard" style="display:none">
@@ -604,8 +605,40 @@
     ).join('');
   }
 
-  // ======= Init =======
-  loadLatestData();
+// ======= Live Options Bridge =======
+  function openOptionsBridge() {
+    const cfg = TICKER_CONFIG[currentTicker];
+    if (!cfg) return;
+    const close = parseFloat(document.getElementById('close').value);
+    if (isNaN(close) || close <= 0) {
+      alert('Please enter a valid Close price first to calculate options strikes.');
+      return;
+    }
+    const predLow = lastResult ? lastResult.low : 0;
+    const url = 'options-bridge.html?ticker=' + cfg.label + '&spx=' + close + '&low=' + predLow;
+    window.open(url, 'OptionsBridge', 'width=450,height=550,menubar=no,toolbar=no');
+  }
+
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'OPTIONS_DATA') return;
+    if (!marketData) marketData = {};
+    const cfgKey = Object.keys(TICKER_CONFIG).find(k => TICKER_CONFIG[k].label === e.data.ticker);
+    if (cfgKey) {
+      marketData[TICKER_CONFIG[cfgKey].optionsField] = {
+        maxPain: e.data.maxPain,
+        expiry: e.data.expiry,
+        topPuts: e.data.topPuts,
+        topCalls: e.data.topCalls
+      };
+      if (currentTicker === cfgKey) {
+        renderOptionsForCurrentTicker();
+        document.getElementById('optionsCard').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      }
+    }
+  });
+
+  // ======= Init =======
+  loadLatestData();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
 </script>
