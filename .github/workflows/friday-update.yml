@@ -215,10 +215,16 @@ jobs:
                   calls['dist'] = abs(calls['strike'] - close_price)
                   atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
 
+                  # Extract Call/Put Data at the ATM Strike
                   atm_call = calls[calls['strike'] == atm_strike].iloc[0]
                   atm_put = puts[puts['strike'] == atm_strike].iloc[0]
 
-                  straddle_move = round((atm_call['lastPrice'] + atm_put['lastPrice']) * 0.85, 2)
+                  # yfinance 'lastPrice' is notoriously stale on weekends. Use Bid/Ask Midpoint.
+                  call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
+                  put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
+
+                  # The Options Method: ATM Straddle * 0.85
+                  straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
                   return {
