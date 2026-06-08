@@ -546,28 +546,37 @@
   // ======= Individual Ticker Logic =======
   function predictStraddle(close, ticker) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
-    const move = data ? data.straddleMove : 0;
+    const baseMove = data ? data.straddleMove : 0;
+    
+    // Apply the Extreme Multiplier to match the trader's sheet
+    const kFactor = 1.45;
+    const expandedMove = baseMove * kFactor;
     const wv = data ? (data.atmIV / 100) * Math.sqrt(5 / 252) : 0;
+
     return {
-      kLow: 1.0, kHigh: 1.0, wv: wv,
-      low: Math.round(close - move),
-      high: Math.round(close + move),
+      kLow: kFactor, kHigh: kFactor, wv: wv,
+      low: Math.round(close - expandedMove),
+      high: Math.round(close + expandedMove),
       regime: 'Options Method',
-      regimeClass: 'neutral',
-      stretchNote: data ? (' | ATM Straddle Move: ±$' + move.toFixed(2)) : ' | Missing Straddle Data'
+      regimeClass: 'high',
+      stretchNote: data ? (' | Base Move: ±$' + baseMove.toFixed(2) + ' → Expanded (x1.45)') : ' | Missing Straddle Data'
     };
   }
 
   function predictVolatility(close, vol) {
     const wv = (vol / 100) * Math.sqrt(5 / 252);
-    const move = close * wv;
+    
+    // Apply the same Extreme Multiplier
+    const kFactor = 1.45;
+    const expandedMove = close * wv * kFactor;
+
     return {
-      kLow: 1.0, kHigh: 1.0, wv: wv,
-      low: Math.round(close - move),
-      high: Math.round(close + move),
+      kLow: kFactor, kHigh: kFactor, wv: wv,
+      low: Math.round(close - expandedMove),
+      high: Math.round(close + expandedMove),
       regime: 'Volatility Method',
-      regimeClass: 'neutral',
-      stretchNote: ' | Standard 1SD IV Baseline'
+      regimeClass: 'high',
+      stretchNote: ' | 1SD IV Baseline × 1.45'
     };
   }
 
