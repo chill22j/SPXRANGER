@@ -11,7 +11,7 @@
   "ndxStretch": 5.51,
   "date": "2026-06-05",
   "weekof": "6/8-6/12",
-  "updated": "2026-06-08T20:24:40Z",
+  "updated": "2026-06-08T20:44:02Z",
   "options": {
     "expiry": "6/12",
     "maxPain": 7490,
@@ -137,25 +137,25 @@
       "close": 208.64,
       "atmStrike": 207.5,
       "straddleMove": 6.46,
-      "atmIV": 38.84
+      "atmIV": 39.36
     },
     "TSLA": {
       "close": 408.95,
       "atmStrike": 410.0,
-      "straddleMove": 16.26,
-      "atmIV": 50.63
+      "straddleMove": 16.13,
+      "atmIV": 49.78
     },
     "AAPL": {
       "close": 301.54,
       "atmStrike": 302.5,
-      "straddleMove": 7.1,
-      "atmIV": 29.83
+      "straddleMove": 7.06,
+      "atmIV": 29.84
     },
     "XOM": {
       "close": 151.75,
       "atmStrike": 152.5,
-      "straddleMove": 4.31,
-      "atmIV": 34.8
+      "straddleMove": 4.05,
+      "atmIV": 34.6
     }
   }
 }
