@@ -194,9 +194,20 @@ jobs:
           def compute_individual_metrics(yf_symbol, mon_dt):
               try:
                   t = yf.Ticker(yf_symbol)
-                  hist = t.history(period="5d")
+                  # Pull 1 month to ensure we get ~21 trading days for HV20
+                  hist = t.history(period="1mo")
                   if hist.empty: return None
                   close_price = round(hist["Close"].iloc[-1], 2)
+
+                  # Calculate 20-Day Historical Volatility (Actual movement)
+                  closes = hist['Close'].tolist()
+                  if len(closes) > 2:
+                      log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes))]
+                      mean_ret = sum(log_rets) / len(log_rets)
+                      var = sum((r - mean_ret)**2 for r in log_rets) / (len(log_rets) - 1)
+                      hv20 = round(math.sqrt(var) * math.sqrt(252) * 100, 2)
+                  else:
+                      hv20 = 0
 
                   expirations = list(t.options)
                   target_exp = None
@@ -215,23 +226,25 @@ jobs:
                   calls['dist'] = abs(calls['strike'] - close_price)
                   atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
 
-                  # Extract Call/Put Data at the ATM Strike
                   atm_call = calls[calls['strike'] == atm_strike].iloc[0]
                   atm_put = puts[puts['strike'] == atm_strike].iloc[0]
 
-                  # yfinance 'lastPrice' is notoriously stale on weekends. Use Bid/Ask Midpoint.
                   call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
                   put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
 
-                  # The Options Method: ATM Straddle * 0.85
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
+
+                  # The Quant Calculation: Volatility Risk Premium
+                  vrp = round(atm_iv - hv20, 2) if hv20 > 0 else 0
 
                   return {
                       "close": close_price,
                       "atmStrike": float(atm_strike),
                       "straddleMove": straddle_move,
-                      "atmIV": atm_iv
+                      "atmIV": atm_iv,
+                      "hv20": hv20,
+                      "vrp": vrp
                   }
               except Exception as e:
                   print(f"Error fetching individual data for {yf_symbol}: {e}")
