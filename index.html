@@ -370,17 +370,26 @@
     weekEl.textContent = marketData.weekof || '—';
 
     const rows = [];
-    for (const ticker of ['SPX', 'NDX', 'QQQ']) {
+    for (const ticker of Object.keys(TICKER_CONFIG)) {
       const cfg = TICKER_CONFIG[ticker];
-      const close = marketData[cfg.closeField];
-      const vol = marketData[cfg.volField];
-      const stretch = marketData[cfg.stretchField];
+      
+      let close, vol, stretch;
+      if (cfg.isIndividual && marketData.individuals && marketData.individuals[ticker]) {
+        close = marketData.individuals[ticker].close;
+        vol = marketData.individuals[ticker].atmIV;
+      } else if (!cfg.isIndividual) {
+        close = marketData[cfg.closeField];
+        vol = marketData[cfg.volField];
+        stretch = marketData[cfg.stretchField];
+      }
 
       let pred = null;
       if (close != null && (vol != null || ticker === 'QQQ')) {
-        if (cfg.formula.type === 'spx')      pred = predictSPX(close, vol, stretch);
-        else if (cfg.formula.type === 'ndx') pred = predictNDX(close, vol, stretch);
-        else                                 pred = predictQQQ(close);
+        if (cfg.formula.type === 'spx')                  pred = predictSPX(close, vol, stretch);
+        else if (cfg.formula.type === 'ndx')             pred = predictNDX(close, vol, stretch);
+        else if (cfg.formula.type === 'qqq-from-ndx')    pred = predictQQQ(close);
+        else if (cfg.formula.type === 'options-straddle') pred = predictStraddle(close, ticker);
+        else if (cfg.formula.type === 'volatility-iv')   pred = predictVolatility(close, vol);
       }
 
       rows.push(
@@ -411,10 +420,19 @@
     document.getElementById('resultTickerHigh').textContent = cfg.label;
     document.getElementById('historyTicker').textContent = cfg.label;
     // Populate inputs from market data
+    // Populate inputs from market data
     if (marketData) {
-      const close = marketData[cfg.closeField];
-      const vol = marketData[cfg.volField];
-      const stretch = marketData[cfg.stretchField];
+      let close, vol, stretch;
+      if (cfg.isIndividual && marketData.individuals && marketData.individuals[currentTicker]) {
+        close = marketData.individuals[currentTicker].close;
+        vol = marketData.individuals[currentTicker].atmIV;
+        stretch = null;
+      } else if (!cfg.isIndividual) {
+        close = marketData[cfg.closeField];
+        vol = marketData[cfg.volField];
+        stretch = marketData[cfg.stretchField];
+      }
+
       if (close != null) document.getElementById('close').value = close;
       else document.getElementById('close').value = '';
       if (vol != null) document.getElementById('vol').value = vol;
@@ -525,6 +543,34 @@
     };
   }
 
+  // ======= Individual Ticker Logic =======
+  function predictStraddle(close, ticker) {
+    const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
+    const move = data ? data.straddleMove : 0;
+    const wv = data ? (data.atmIV / 100) * Math.sqrt(5 / 252) : 0;
+    return {
+      kLow: 1.0, kHigh: 1.0, wv: wv,
+      low: Math.round(close - move),
+      high: Math.round(close + move),
+      regime: 'Options Method',
+      regimeClass: 'neutral',
+      stretchNote: data ? (' | ATM Straddle Move: ±$' + move.toFixed(2)) : ' | Missing Straddle Data'
+    };
+  }
+
+  function predictVolatility(close, vol) {
+    const wv = (vol / 100) * Math.sqrt(5 / 252);
+    const move = close * wv;
+    return {
+      kLow: 1.0, kHigh: 1.0, wv: wv,
+      low: Math.round(close - move),
+      high: Math.round(close + move),
+      regime: 'Volatility Method',
+      regimeClass: 'neutral',
+      stretchNote: ' | Standard 1SD IV Baseline'
+    };
+  }
+
   function calculate() {
     const cfg = TICKER_CONFIG[currentTicker];
     const close = parseFloat(document.getElementById('close').value);
@@ -535,11 +581,13 @@
     if (isNaN(close) || isNaN(vol)) { alert('Please enter ' + cfg.label + ' Close and ' + cfg.volLabel + '.'); return; }
 
     let result;
-    if (cfg.formula.type === 'spx')        result = predictSPX(close, vol, stretch);
-    else if (cfg.formula.type === 'ndx')   result = predictNDX(close, vol, stretch);
-    else                                   result = predictQQQ(close);
+    if (cfg.formula.type === 'spx')                  result = predictSPX(close, vol, stretch);
+    else if (cfg.formula.type === 'ndx')             result = predictNDX(close, vol, stretch);
+    else if (cfg.formula.type === 'qqq-from-ndx')    result = predictQQQ(close);
+    else if (cfg.formula.type === 'options-straddle') result = predictStraddle(close, currentTicker);
+    else if (cfg.formula.type === 'volatility-iv')   result = predictVolatility(close, vol);
 
-    if (!result) { alert('Cannot compute QQQ — NDX market data unavailable.'); return; }
+    if (!result) { alert('Cannot compute prediction — missing required market data.'); return; }
 
     const mid = Math.round((result.low + result.high) / 2);
     const width = result.high - result.low;
