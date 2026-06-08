@@ -146,11 +146,17 @@
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
-  <div class="tab-bar" id="tabBar">
+<div class="tab-bar" id="tabBar">
     <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY<span class="tab-sub">All Tickers</span></button>
     <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX<span class="tab-sub">S&amp;P 500</span></button>
     <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX<span class="tab-sub">Nasdaq 100</span></button>
     <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ<span class="tab-sub">QQQ ETF</span></button>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn" data-ticker="NVDA" onclick="switchTicker('NVDA')">NVDA<span class="tab-sub">Options</span></button>
+    <button class="tab-btn" data-ticker="TSLA" onclick="switchTicker('TSLA')">TSLA<span class="tab-sub">Options</span></button>
+    <button class="tab-btn" data-ticker="AAPL" onclick="switchTicker('AAPL')">AAPL<span class="tab-sub">Options</span></button>
+    <button class="tab-btn" data-ticker="XOM" onclick="switchTicker('XOM')">XOM<span class="tab-sub">Volatility</span></button>
   </div>
 
   <div class="card" id="summaryView">
@@ -258,6 +264,26 @@
       closeField: 'qqq', volField: 'vxn', ma50Field: 'ndxMa50', stretchField: 'ndxStretch', optionsField: 'qqqOptions',
       volLabel: 'VXN',
       formula: { type: 'qqq-from-ndx' }
+    },
+    NVDA: {
+      label: 'NVDA', longLabel: 'Nvidia',
+      isIndividual: true,
+      formula: { type: 'options-straddle' }
+    },
+    TSLA: {
+      label: 'TSLA', longLabel: 'Tesla',
+      isIndividual: true,
+      formula: { type: 'options-straddle' }
+    },
+    AAPL: {
+      label: 'AAPL', longLabel: 'Apple',
+      isIndividual: true,
+      formula: { type: 'options-straddle' }
+    },
+    XOM: {
+      label: 'XOM', longLabel: 'Exxon Mobil',
+      isIndividual: true,
+      formula: { type: 'volatility-iv' }
     }
   };
 
