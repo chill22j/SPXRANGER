@@ -1,134 +1,134 @@
 {
   "spx": 7383.74,
   "vix": 21.51,
-  "hv20": 15.07,
+  "hv20": 15.02,
   "ma50": 7155.96,
   "stretch": 3.18,
   "ndx": 28957.6,
-  "vxn": null,
+  "vxn": 30.47,
   "qqq": 705.06,
   "ndxMa50": 27446.08,
   "ndxStretch": 5.51,
   "date": "2026-06-05",
   "weekof": "6/8-6/12",
-  "updated": "2026-06-05T23:16:44Z",
+  "updated": "2026-06-08T19:01:46Z",
   "options": {
     "expiry": "6/12",
-    "maxPain": 7500,
+    "maxPain": 7490,
     "topPuts": [
       {
         "strike": 6600,
-        "oi": 6424
+        "oi": 6478
+      },
+      {
+        "strike": 6325,
+        "oi": 5864
       },
       {
         "strike": 6575,
-        "oi": 5332
+        "oi": 5503
       },
       {
-        "strike": 7450,
-        "oi": 3799
-      },
-      {
-        "strike": 7500,
-        "oi": 3428
+        "strike": 7350,
+        "oi": 5063
       }
     ],
     "topCalls": [
       {
         "strike": 7600,
-        "oi": 3995
+        "oi": 6096
+      },
+      {
+        "strike": 7800,
+        "oi": 4290
       },
       {
         "strike": 7650,
-        "oi": 3854
+        "oi": 3755
       },
       {
         "strike": 7700,
-        "oi": 2821
-      },
-      {
-        "strike": 7900,
-        "oi": 2806
+        "oi": 3375
       }
     ]
   },
   "ndxOptions": {
     "expiry": "6/12",
-    "maxPain": 29800,
+    "maxPain": 29750,
     "topPuts": [
       {
-        "strike": 27500,
-        "oi": 133
+        "strike": 28000,
+        "oi": 131
       },
       {
-        "strike": 27300,
-        "oi": 124
+        "strike": 26900,
+        "oi": 130
       },
       {
         "strike": 28900,
-        "oi": 120
+        "oi": 127
       },
       {
-        "strike": 28100,
-        "oi": 104
+        "strike": 27500,
+        "oi": 122
       }
     ],
     "topCalls": [
       {
         "strike": 29900,
-        "oi": 120
+        "oi": 128
+      },
+      {
+        "strike": 31100,
+        "oi": 85
       },
       {
         "strike": 29800,
-        "oi": 74
+        "oi": 75
       },
       {
-        "strike": 33000,
-        "oi": 70
-      },
-      {
-        "strike": 31300,
-        "oi": 64
+        "strike": 27000,
+        "oi": 71
       }
     ]
   },
   "qqqOptions": {
     "expiry": "6/12",
-    "maxPain": 735,
+    "maxPain": 720,
     "topPuts": [
       {
+        "strike": 690,
+        "oi": 11288
+      },
+      {
+        "strike": 700,
+        "oi": 9799
+      },
+      {
+        "strike": 710,
+        "oi": 8839
+      },
+      {
         "strike": 740,
-        "oi": 9142
-      },
-      {
-        "strike": 720,
-        "oi": 8966
-      },
-      {
-        "strike": 715,
-        "oi": 6355
-      },
-      {
-        "strike": 742,
-        "oi": 6030
+        "oi": 8517
       }
     ],
     "topCalls": [
       {
-        "strike": 745,
-        "oi": 8220
+        "strike": 740,
+        "oi": 14010
       },
       {
-        "strike": 740,
-        "oi": 7760
+        "strike": 720,
+        "oi": 13395
+      },
+      {
+        "strike": 730,
+        "oi": 11403
       },
       {
         "strike": 750,
-        "oi": 6783
-      },
-      {
-        "strike": 737,
-        "oi": 5626
+        "oi": 10540
       }
     ]
   }
