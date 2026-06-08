@@ -1,7 +1,7 @@
 {
   "spx": 7383.74,
   "vix": 21.51,
-  "hv20": 15.02,
+  "hv20": 15.01,
   "ma50": 7155.96,
   "stretch": 3.18,
   "ndx": 28957.6,
@@ -11,7 +11,7 @@
   "ndxStretch": 5.51,
   "date": "2026-06-05",
   "weekof": "6/8-6/12",
-  "updated": "2026-06-08T19:01:46Z",
+  "updated": "2026-06-08T20:24:40Z",
   "options": {
     "expiry": "6/12",
     "maxPain": 7490,
@@ -131,5 +131,31 @@
         "oi": 10540
       }
     ]
+  },
+  "individuals": {
+    "NVDA": {
+      "close": 208.64,
+      "atmStrike": 207.5,
+      "straddleMove": 6.46,
+      "atmIV": 38.84
+    },
+    "TSLA": {
+      "close": 408.95,
+      "atmStrike": 410.0,
+      "straddleMove": 16.26,
+      "atmIV": 50.63
+    },
+    "AAPL": {
+      "close": 301.54,
+      "atmStrike": 302.5,
+      "straddleMove": 7.1,
+      "atmIV": 29.83
+    },
+    "XOM": {
+      "close": 151.75,
+      "atmStrike": 152.5,
+      "straddleMove": 4.31,
+      "atmIV": 34.8
+    }
   }
 }
