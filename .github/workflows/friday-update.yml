@@ -190,6 +190,52 @@ jobs:
               qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
               print(f"QQQ options: maxPain={qqq_max_pain} expiry={qqq_options_expiry} puts={len(qqq_top_puts or [])} calls={len(qqq_top_calls or [])}")
 
+          # ======= Individual Tickers (Options & Volatility Methods) =======
+          def compute_individual_metrics(yf_symbol, mon_dt):
+              try:
+                  t = yf.Ticker(yf_symbol)
+                  hist = t.history(period="5d")
+                  if hist.empty: return None
+                  close_price = round(hist["Close"].iloc[-1], 2)
+
+                  expirations = list(t.options)
+                  target_exp = None
+                  for exp in expirations:
+                      exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
+                      days_from_mon = (exp_date - mon_dt.date()).days
+                      if 0 <= days_from_mon <= 4:
+                          target_exp = exp
+                  if not target_exp and expirations:
+                      target_exp = expirations[0]
+
+                  chain = t.option_chain(target_exp)
+                  calls = chain.calls
+                  puts = chain.puts
+
+                  calls['dist'] = abs(calls['strike'] - close_price)
+                  atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
+
+                  atm_call = calls[calls['strike'] == atm_strike].iloc[0]
+                  atm_put = puts[puts['strike'] == atm_strike].iloc[0]
+
+                  straddle_move = round((atm_call['lastPrice'] + atm_put['lastPrice']) * 0.85, 2)
+                  atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
+
+                  return {
+                      "close": close_price,
+                      "atmStrike": float(atm_strike),
+                      "straddleMove": straddle_move,
+                      "atmIV": atm_iv
+                  }
+              except Exception as e:
+                  print(f"Error fetching individual data for {yf_symbol}: {e}")
+                  return None
+
+          individual_data = {}
+          for sym in ["NVDA", "TSLA", "AAPL", "XOM"]:
+              individual_data[sym] = compute_individual_metrics(sym, mon)
+              print(f"{sym} Data: {individual_data[sym]}")
+
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
               "ma50": ma50, "stretch": stretch_pct,
@@ -199,7 +245,8 @@ jobs:
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
               "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
               "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts or [], "topCalls": ndx_top_calls or []},
-              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []}
+              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []},
+              "individuals": individual_data
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
