@@ -432,6 +432,16 @@
     };
   }
 
+// ======= Dynamic Volatility K-Factor =======
+  function getVolMultiplier(iv) {
+    const threshold = 20.0; // Normal VXN baseline
+    if (iv > threshold) {
+      // Scales dynamically: VXN 30.47 = ~1.19x multiplier
+      return 1 + ((iv - threshold) * 0.0181);
+    }
+    return 1.0; 
+  }
+
   function predictNDX(close, vol, stretch) {
     const f = TICKER_CONFIG.NDX.formula;
     let kLow = f.base.kLow;
@@ -448,13 +458,23 @@
         stretchNote = ' | Neutral (' + stretch.toFixed(1) + '% from MA50)';
       }
     }
+
+    // Apply Sub-linear Volatility Scaling
+    let volMult = getVolMultiplier(vol);
+    kLow *= volMult;
+    kHigh *= volMult;
+    
+    if (volMult > 1.0) {
+      stretchNote += ' | Elevated Vol (x' + volMult.toFixed(2) + ')';
+    }
+
     const wv = (vol / 100) * Math.sqrt(5 / 252);
     return {
       kLow, kHigh, wv,
       low: Math.round(close * (1 - kLow * wv)),
       high: Math.round(close * (1 + kHigh * wv)),
-      regime: 'Single base',
-      regimeClass: 'neutral',
+      regime: volMult > 1.0 ? 'Elevated Vol' : 'Single base',
+      regimeClass: volMult > 1.0 ? 'high' : 'neutral',
       stretchNote
     };
   }
