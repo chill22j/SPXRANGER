@@ -2,7 +2,7 @@ name: Friday Market Update
 
 on:
   schedule:
-    - cron: '0 22 * * 5'  # Runs at 22:00 UTC (6pm ET in EDT, 5pm ET in EST), Fridays
+    - cron: '0 14 * * 6'
   workflow_dispatch:
 
 jobs:
