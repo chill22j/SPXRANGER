@@ -191,57 +191,7 @@ jobs:
               print(f"QQQ options: maxPain={qqq_max_pain} expiry={qqq_options_expiry} puts={len(qqq_top_puts or [])} calls={len(qqq_top_calls or [])}")
 
           # ======= Individual Tickers (Options & Volatility Methods) =======
-          def compute_individual_metrics(yf_symbol, mon_dt):
-              try:
-                  t = yf.Ticker(yf_symbol)
-                  hist = t.history(period="1mo")
-                  if hist.empty: return None
-                  
-                  # Bulletproof Fix: Anchor strictly to previous week's close
-                  hist['date_only'] = hist.index.date
-                  valid_hist = hist[hist['date_only'] < mon_dt.date()]
-                  
-                  if valid_hist.empty:
-                      return None
-                      
-                  hist = valid_hist
-                  close_price = round(hist["Close"].iloc[-1], 2)
-
-                  expirations = list(t.options)
-                  target_exp = None
-                  for exp in expirations:
-                      exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
-                      days_from_mon = (exp_date - mon_dt.date()).days
-                      if 0 <= days_from_mon <= 4:
-                          target_exp = exp
-                  if not target_exp and expirations:
-                      target_exp = expirations[0]
-
-                  chain = t.option_chain(target_exp)
-                  calls = chain.calls
-                  puts = chain.puts
-
-                  calls['dist'] = abs(calls['strike'] - close_price)
-                  atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
-
-                  atm_call = calls[calls['strike'] == atm_strike].iloc[0]
-                  atm_put = puts[puts['strike'] == atm_strike].iloc[0]
-
-                  call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
-                  put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
-
-                  straddle_move = round((call_mark + put_mark) * 0.85, 2)
-                  atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
-
-                  return {
-                      "close": close_price,
-                      "atmStrike": float(atm_strike),
-                      "straddleMove": straddle_move,
-                      "atmIV": atm_iv
-                  }
-              except Exception as e:
-                  print(f"Error fetching individual data for {yf_symbol}: {e}")
-                  return None
+          V
 
           individual_data = {}
           for sym in ["NVDA", "TSLA", "AAPL", "XOM"]:
