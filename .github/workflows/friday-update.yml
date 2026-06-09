@@ -238,13 +238,34 @@ jobs:
                   # The Quant Calculation: Volatility Risk Premium
                   vrp = round(atm_iv - hv20, 2) if hv20 > 0 else 0
 
+                  # ======= Phase 2: Volatility Skew =======
+                  # Look approx 10% Out-of-the-Money to measure directional fear
+                  target_down = close_price * 0.90
+                  target_up = close_price * 1.10
+
+                  puts['dist_otm'] = abs(puts['strike'] - target_down)
+                  otm_put_strike = puts.loc[puts['dist_otm'].idxmin()]['strike']
+                  otm_put = puts[puts['strike'] == otm_put_strike].iloc[0]
+
+                  calls['dist_otm'] = abs(calls['strike'] - target_up)
+                  otm_call_strike = calls.loc[calls['dist_otm'].idxmin()]['strike']
+                  otm_call = calls[calls['strike'] == otm_call_strike].iloc[0]
+
+                  otm_put_iv = otm_put['impliedVolatility']
+                  otm_call_iv = otm_call['impliedVolatility']
+
+                  # Calculate the Skew Ratio (Put IV / Call IV)
+                  # > 1.0 means downside fear. < 1.0 means upside FOMO.
+                  skew_ratio = round(otm_put_iv / otm_call_iv, 3) if otm_call_iv > 0 else 1.0
+
                   return {
                       "close": close_price,
                       "atmStrike": float(atm_strike),
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
                       "hv20": hv20,
-                      "vrp": vrp
+                      "vrp": vrp,
+                      "skewRatio": skew_ratio
                   }
               except Exception as e:
                   print(f"Error fetching individual data for {yf_symbol}: {e}")
