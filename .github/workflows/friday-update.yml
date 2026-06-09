@@ -258,6 +258,21 @@ jobs:
                   # > 1.0 means downside fear. < 1.0 means upside FOMO.
                   skew_ratio = round(otm_put_iv / otm_call_iv, 3) if otm_call_iv > 0 else 1.0
 
+                  # ======= Phase 3: Gamma Walls (Open Interest) =======
+                  # Look within +/- 40% of the current price to find the biggest OI walls
+                  lo_wall = close_price * 0.60
+                  hi_wall = close_price * 1.40
+                  
+                  wall_calls = calls[(calls["strike"] >= lo_wall) & (calls["strike"] <= hi_wall) & (calls["openInterest"].notna())]
+                  wall_puts  = puts[(puts["strike"] >= lo_wall) & (puts["strike"] <= hi_wall) & (puts["openInterest"].notna())]
+                  
+                  call_oi = dict(zip(wall_calls["strike"].tolist(), wall_calls["openInterest"].fillna(0).tolist()))
+                  put_oi  = dict(zip(wall_puts["strike"].tolist(),  wall_puts["openInterest"].fillna(0).tolist()))
+                  
+                  # Sort and grab the top 3 largest volume walls for Puts and Calls
+                  top_puts_list = sorted([{"strike": float(k), "oi": int(v)} for k,v in put_oi.items() if k < close_price], key=lambda x: -x["oi"])[:3]
+                  top_calls_list = sorted([{"strike": float(k), "oi": int(v)} for k,v in call_oi.items() if k > close_price], key=lambda x: -x["oi"])[:3]
+
                   return {
                       "close": close_price,
                       "atmStrike": float(atm_strike),
@@ -265,7 +280,9 @@ jobs:
                       "atmIV": atm_iv,
                       "hv20": hv20,
                       "vrp": vrp,
-                      "skewRatio": skew_ratio
+                      "skewRatio": skew_ratio,
+                      "topPuts": top_puts_list,
+                      "topCalls": top_calls_list
                   }
               except Exception as e:
                   print(f"Error fetching individual data for {yf_symbol}: {e}")
