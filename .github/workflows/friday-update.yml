@@ -197,10 +197,22 @@ jobs:
                   # Pull 1 month to ensure we get ~21 trading days for HV20
                   hist = t.history(period="1mo")
                   if hist.empty: return None
+                  
+                  # Bulletproof Fix: Force the script to ignore any live data from this week.
+                  hist['date_only'] = hist.index.date
+                  valid_hist = hist[hist['date_only'] < mon_dt.date()]
+                  
+                  if valid_hist.empty:
+                      return None
+                      
+                  # By taking the last row of the filtered history, we naturally grab Friday's close 
+                  # (or Thursday's close if Friday was a market holiday).
+                  hist = valid_hist
                   close_price = round(hist["Close"].iloc[-1], 2)
 
-                  # Calculate 20-Day Historical Volatility (Actual movement)
+                  # Calculate 20-Day Historical Volatility using that exact cutoff
                   closes = hist['Close'].tolist()
+                  
                   if len(closes) > 2:
                       log_rets = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes))]
                       mean_ret = sum(log_rets) / len(log_rets)
