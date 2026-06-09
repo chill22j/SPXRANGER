@@ -1,4 +1,4 @@
-const CACHE = 'pvi-v16';
+const CACHE = 'pvi-v17';
 const ASSETS = ['/', '/index.html', '/manifest.json', '/data/market.json'];
 
 self.addEventListener('install', e => {
