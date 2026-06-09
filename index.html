@@ -545,21 +545,17 @@
   function predictDynamicRange(close, ticker, vol) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
     
-    // ======= The VRP Accelerator Logic =======
+    // ======= Phase 1: VRP Accelerator =======
     let vrpCrush = 1.0;
     let vrpNote = '';
     
     if (data && data.vrp) {
       if (data.vrp > 10.0) {
-        // IV is massively higher than historical (Overpriced/Fear) -> Crush the range
         vrpCrush = 0.85;
-        vrpNote = ' | VRP Crush (IV Overpriced): x0.85';
+        vrpNote = ' | VRP Crush: x0.85';
       } else if (data.vrp < -5.0) {
-        // IV is too low compared to actual movement (Underpriced/Complacency) -> Expand the range
         vrpCrush = 1.15;
-        vrpNote = ' | VRP Expansion (IV Complacent): x1.15';
-      } else {
-        vrpNote = ' | VRP Neutral';
+        vrpNote = ' | VRP Expand: x1.15';
       }
     }
 
@@ -573,18 +569,37 @@
     // 3. The Quant Decision: Choose the wider range
     const isOptionsWider = straddleMove > volMove;
     const finalMove = isOptionsWider ? straddleMove : volMove;
-    
     const winningRegime = isOptionsWider ? 'Options (Straddle)' : 'Volatility (IV)';
+
+    // ======= Phase 2: Volatility Skew (The Steering) =======
+    let downMove = finalMove;
+    let upMove = finalMove;
+    let skewNote = '';
+
+    if (data && data.skewRatio) {
+      // Cap the ratio at 1.3 / 0.7 to prevent broken ranges on highly illiquid chains
+      const safeSkew = Math.max(0.7, Math.min(data.skewRatio, 1.3));
+      
+      // Tilt the symmetrical move asymmetrically
+      downMove = finalMove * safeSkew;
+      upMove = finalMove * (1 / safeSkew);
+
+      if (safeSkew > 1.05) {
+        skewNote = ` | Skew: Bearish (${safeSkew.toFixed(2)}x)`;
+      } else if (safeSkew < 0.95) {
+        skewNote = ` | Skew: Bullish (${safeSkew.toFixed(2)}x)`;
+      }
+    }
 
     return {
       kLow: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
       kHigh: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
       wv: wv,
-      low: Math.round(close - finalMove),
-      high: Math.round(close + finalMove),
+      low: Math.round(close - downMove),
+      high: Math.round(close + upMove),
       regime: winningRegime,
       regimeClass: isOptionsWider ? 'high' : 'low',
-      stretchNote: '±$' + finalMove.toFixed(2) + vrpNote
+      stretchNote: '±$' + finalMove.toFixed(2) + vrpNote + skewNote
     };
   }
 
