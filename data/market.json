@@ -11,7 +11,7 @@
   "ndxStretch": 5.51,
   "date": "2026-06-05",
   "weekof": "6/8-6/12",
-  "updated": "2026-06-09T01:03:24Z",
+  "updated": "2026-06-09T01:16:11Z",
   "options": {
     "expiry": "6/12",
     "maxPain": 6780,
@@ -108,149 +108,25 @@
       "close": 205.1,
       "atmStrike": 205.0,
       "straddleMove": 6.98,
-      "atmIV": 44.81,
-      "hv20": 47.53,
-      "vrp": -2.72,
-      "skewRatio": 1.336,
-      "topPuts": [
-        {
-          "strike": 200.0,
-          "oi": 27190
-        },
-        {
-          "strike": 190.0,
-          "oi": 15893
-        },
-        {
-          "strike": 165.0,
-          "oi": 14579
-        }
-      ],
-      "topCalls": [
-        {
-          "strike": 215.0,
-          "oi": 52431
-        },
-        {
-          "strike": 220.0,
-          "oi": 44377
-        },
-        {
-          "strike": 225.0,
-          "oi": 44350
-        }
-      ]
+      "atmIV": 44.81
     },
     "TSLA": {
       "close": 391.0,
       "atmStrike": 390.0,
       "straddleMove": 21.3,
-      "atmIV": 58.36,
-      "hv20": 44.6,
-      "vrp": 13.76,
-      "skewRatio": 1.313,
-      "topPuts": [
-        {
-          "strike": 240.0,
-          "oi": 23034
-        },
-        {
-          "strike": 250.0,
-          "oi": 19365
-        },
-        {
-          "strike": 300.0,
-          "oi": 7425
-        }
-      ],
-      "topCalls": [
-        {
-          "strike": 500.0,
-          "oi": 12533
-        },
-        {
-          "strike": 450.0,
-          "oi": 12412
-        },
-        {
-          "strike": 435.0,
-          "oi": 11764
-        }
-      ]
+      "atmIV": 58.36
     },
     "AAPL": {
       "close": 307.34,
       "atmStrike": 307.5,
       "straddleMove": 8.07,
-      "atmIV": 33.03,
-      "hv20": 18.36,
-      "vrp": 14.67,
-      "skewRatio": 1.003,
-      "topPuts": [
-        {
-          "strike": 300.0,
-          "oi": 5063
-        },
-        {
-          "strike": 290.0,
-          "oi": 4163
-        },
-        {
-          "strike": 287.5,
-          "oi": 3736
-        }
-      ],
-      "topCalls": [
-        {
-          "strike": 320.0,
-          "oi": 24339
-        },
-        {
-          "strike": 315.0,
-          "oi": 16387
-        },
-        {
-          "strike": 330.0,
-          "oi": 11015
-        }
-      ]
+      "atmIV": 33.03
     },
     "XOM": {
       "close": 149.92,
       "atmStrike": 150.0,
       "straddleMove": 4.25,
-      "atmIV": 40.06,
-      "hv20": 31.25,
-      "vrp": 8.81,
-      "skewRatio": 1.086,
-      "topPuts": [
-        {
-          "strike": 130.0,
-          "oi": 2178
-        },
-        {
-          "strike": 145.0,
-          "oi": 2126
-        },
-        {
-          "strike": 140.0,
-          "oi": 1226
-        }
-      ],
-      "topCalls": [
-        {
-          "strike": 155.0,
-          "oi": 2991
-        },
-        {
-          "strike": 160.0,
-          "oi": 1553
-        },
-        {
-          "strike": 165.0,
-          "oi": 1395
-        }
-      ]
+      "atmIV": 40.06
     }
   }
 }
