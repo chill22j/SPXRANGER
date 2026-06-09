@@ -559,8 +559,7 @@
 
     // 4. The Extreme Expansion
     // The trader pushes their final PVI slightly wider than a standard 2.0 Baseline.
-    // A 2.5 multiplier captures that fat-tail rounding they apply.
-    const kFactor = 2.5;
+    const kFactor = 2.25;
     const expandedMove = baseMove * kFactor;
 
     return {
