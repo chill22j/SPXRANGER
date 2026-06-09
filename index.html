@@ -146,23 +146,18 @@
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
-tickers.forEach(ticker => {
-      const button = document.createElement('button');
-      button.className = `tab-btn ${ticker === activeTicker ? 'active' : ''}`;
-      
-      // Kept strictly to a single row showing just the ticker symbol
-      button.innerHTML = `
-        <div class="tab-ticker">${ticker}</div>
-      `;
-      
-      button.addEventListener('click', () => {
-        activeTicker = ticker;
-        updateTabs();
-        renderTable();
-      });
-      
-      tabContainer.appendChild(button);
-    });
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY</button>
+  <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX</button>
+  <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX</button>
+  <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ</button>
+</div>
+<div class="tab-bar">
+  <button class="tab-btn" data-ticker="NVDA" onclick="switchTicker('NVDA')">NVDA</button>
+  <button class="tab-btn" data-ticker="TSLA" onclick="switchTicker('TSLA')">TSLA</button>
+  <button class="tab-btn" data-ticker="AAPL" onclick="switchTicker('AAPL')">AAPL</button>
+  <button class="tab-btn" data-ticker="XOM" onclick="switchTicker('XOM')">XOM</button>
+</div>
 
   <div class="card" id="summaryView">
     <div class="card-title">Weekly Range Summary — <span id="summaryWeek">—</span></div>
