@@ -146,18 +146,23 @@
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
-<div class="tab-bar" id="tabBar">
-    <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY<span class="tab-sub">All Tickers</span></button>
-    <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX<span class="tab-sub">S&amp;P 500</span></button>
-    <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX<span class="tab-sub">Nasdaq 100</span></button>
-    <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ<span class="tab-sub">QQQ ETF</span></button>
-  </div>
-  <div class="tab-bar">
-    <button class="tab-btn" data-ticker="NVDA" onclick="switchTicker('NVDA')">NVDA<span class="tab-sub">Options</span></button>
-    <button class="tab-btn" data-ticker="TSLA" onclick="switchTicker('TSLA')">TSLA<span class="tab-sub">Options</span></button>
-    <button class="tab-btn" data-ticker="AAPL" onclick="switchTicker('AAPL')">AAPL<span class="tab-sub">Options</span></button>
-    <button class="tab-btn" data-ticker="XOM" onclick="switchTicker('XOM')">XOM<span class="tab-sub">Volatility</span></button>
-  </div>
+tickers.forEach(ticker => {
+      const button = document.createElement('button');
+      button.className = `tab-btn ${ticker === activeTicker ? 'active' : ''}`;
+      
+      // Kept strictly to a single row showing just the ticker symbol
+      button.innerHTML = `
+        <div class="tab-ticker">${ticker}</div>
+      `;
+      
+      button.addEventListener('click', () => {
+        activeTicker = ticker;
+        updateTabs();
+        renderTable();
+      });
+      
+      tabContainer.appendChild(button);
+    });
 
   <div class="card" id="summaryView">
     <div class="card-title">Weekly Range Summary — <span id="summaryWeek">—</span></div>
@@ -570,7 +575,7 @@
       high: Math.round(close + expandedMove),
       regime: winningRegime,
       regimeClass: isOptionsWider ? 'high' : 'low',
-      stretchNote: ' | Symmetrical Expansion (x' + kFactor + ')'
+      stretchNote: '' // Cleared out to remove the small second-line description text
     };
   }
 
