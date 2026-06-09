@@ -11,7 +11,7 @@
   "ndxStretch": 5.51,
   "date": "2026-06-05",
   "weekof": "6/8-6/12",
-  "updated": "2026-06-09T00:45:06Z",
+  "updated": "2026-06-09T01:03:24Z",
   "options": {
     "expiry": "6/12",
     "maxPain": 6780,
@@ -105,13 +105,13 @@
   },
   "individuals": {
     "NVDA": {
-      "close": 208.64,
-      "atmStrike": 207.5,
-      "straddleMove": 6.46,
-      "atmIV": 43.99,
-      "hv20": 46.81,
-      "vrp": -2.82,
-      "skewRatio": 1.189,
+      "close": 205.1,
+      "atmStrike": 205.0,
+      "straddleMove": 6.98,
+      "atmIV": 44.81,
+      "hv20": 47.53,
+      "vrp": -2.72,
+      "skewRatio": 1.336,
       "topPuts": [
         {
           "strike": 200.0,
@@ -142,14 +142,18 @@
       ]
     },
     "TSLA": {
-      "close": 408.95,
-      "atmStrike": 410.0,
-      "straddleMove": 16.13,
-      "atmIV": 55.43,
-      "hv20": 47.31,
-      "vrp": 8.12,
-      "skewRatio": 1.077,
+      "close": 391.0,
+      "atmStrike": 390.0,
+      "straddleMove": 21.3,
+      "atmIV": 58.36,
+      "hv20": 44.6,
+      "vrp": 13.76,
+      "skewRatio": 1.313,
       "topPuts": [
+        {
+          "strike": 240.0,
+          "oi": 23034
+        },
         {
           "strike": 250.0,
           "oi": 19365
@@ -157,10 +161,6 @@
         {
           "strike": 300.0,
           "oi": 7425
-        },
-        {
-          "strike": 370.0,
-          "oi": 6393
         }
       ],
       "topCalls": [
@@ -179,13 +179,13 @@
       ]
     },
     "AAPL": {
-      "close": 301.54,
-      "atmStrike": 302.5,
-      "straddleMove": 7.06,
-      "atmIV": 33.36,
-      "hv20": 19.52,
-      "vrp": 13.84,
-      "skewRatio": 1.135,
+      "close": 307.34,
+      "atmStrike": 307.5,
+      "straddleMove": 8.07,
+      "atmIV": 33.03,
+      "hv20": 18.36,
+      "vrp": 14.67,
+      "skewRatio": 1.003,
       "topPuts": [
         {
           "strike": 300.0,
@@ -216,13 +216,13 @@
       ]
     },
     "XOM": {
-      "close": 151.75,
-      "atmStrike": 152.5,
-      "straddleMove": 4.05,
-      "atmIV": 38.67,
-      "hv20": 30.66,
-      "vrp": 8.01,
-      "skewRatio": 1.105,
+      "close": 149.92,
+      "atmStrike": 150.0,
+      "straddleMove": 4.25,
+      "atmIV": 40.06,
+      "hv20": 31.25,
+      "vrp": 8.81,
+      "skewRatio": 1.086,
       "topPuts": [
         {
           "strike": 130.0,
@@ -233,8 +233,8 @@
           "oi": 2126
         },
         {
-          "strike": 150.0,
-          "oi": 1323
+          "strike": 140.0,
+          "oi": 1226
         }
       ],
       "topCalls": [
