@@ -388,10 +388,8 @@
         if (cfg.formula.type === 'spx')                  pred = predictSPX(close, vol, stretch);
         else if (cfg.formula.type === 'ndx')             pred = predictNDX(close, vol, stretch);
         else if (cfg.formula.type === 'qqq-from-ndx')    pred = predictQQQ(close);
-        else if (cfg.formula.type === 'options-straddle') pred = predictStraddle(close, ticker);
-        else if (cfg.formula.type === 'volatility-iv')   pred = predictVolatility(close, vol);
+        else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') pred = predictDynamicRange(close, ticker, vol);
       }
-
       rows.push(
         '<tr>' +
           '<td class="ticker-cell">' + cfg.label + '<span class="ticker-sub">' + cfg.longLabel + '</span></td>' +
@@ -543,40 +541,50 @@
     };
   }
 
-  // ======= Individual Ticker Logic =======
-  function predictStraddle(close, ticker) {
+  // ======= Individual Ticker Logic (Unified Dynamic Engine) =======
+  function predictDynamicRange(close, ticker, vol) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
-    const baseMove = data ? data.straddleMove : 0;
     
-    // Apply the Extreme Multiplier to match the trader's sheet
-    const kFactor = 1.45;
-    const expandedMove = baseMove * kFactor;
-    const wv = data ? (data.atmIV / 100) * Math.sqrt(5 / 252) : 0;
+    // ======= The VRP Accelerator Logic =======
+    let vrpCrush = 1.0;
+    let vrpNote = '';
+    
+    if (data && data.vrp) {
+      if (data.vrp > 10.0) {
+        // IV is massively higher than historical (Overpriced/Fear) -> Crush the range
+        vrpCrush = 0.85;
+        vrpNote = ' | VRP Crush (IV Overpriced): x0.85';
+      } else if (data.vrp < -5.0) {
+        // IV is too low compared to actual movement (Underpriced/Complacency) -> Expand the range
+        vrpCrush = 1.15;
+        vrpNote = ' | VRP Expansion (IV Complacent): x1.15';
+      } else {
+        vrpNote = ' | VRP Neutral';
+      }
+    }
 
-    return {
-      kLow: kFactor, kHigh: kFactor, wv: wv,
-      low: Math.round(close - expandedMove),
-      high: Math.round(close + expandedMove),
-      regime: 'Options Method',
-      regimeClass: 'high',
-      stretchNote: data ? (' | Base Move: ±$' + baseMove.toFixed(2) + ' → Expanded (x1.45)') : ' | Missing Straddle Data'
-    };
-  }
-
-  function predictVolatility(close, vol) {
+    // 1. Calculate Volatility Method
     const wv = (vol / 100) * Math.sqrt(5 / 252);
+    const volMove = close * wv * 1.45 * vrpCrush; 
     
-    // Apply the same Extreme Multiplier
-    const kFactor = 1.45;
-    const expandedMove = close * wv * kFactor;
+    // 2. Calculate Options Straddle Method
+    const straddleMove = data ? (data.straddleMove * 2.0 * vrpCrush) : 0; 
+    
+    // 3. The Quant Decision: Choose the wider range
+    const isOptionsWider = straddleMove > volMove;
+    const finalMove = isOptionsWider ? straddleMove : volMove;
+    
+    const winningRegime = isOptionsWider ? 'Options (Straddle)' : 'Volatility (IV)';
 
     return {
-      kLow: kFactor, kHigh: kFactor, wv: wv,
-      low: Math.round(close - expandedMove),
-      high: Math.round(close + expandedMove),
-      regime: 'Volatility Method',
-      regimeClass: 'high',
-      stretchNote: ' | 1SD IV Baseline × 1.45'
+      kLow: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
+      kHigh: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
+      wv: wv,
+      low: Math.round(close - finalMove),
+      high: Math.round(close + finalMove),
+      regime: winningRegime,
+      regimeClass: isOptionsWider ? 'high' : 'low',
+      stretchNote: '±$' + finalMove.toFixed(2) + vrpNote
     };
   }
 
@@ -593,8 +601,7 @@
     if (cfg.formula.type === 'spx')                  result = predictSPX(close, vol, stretch);
     else if (cfg.formula.type === 'ndx')             result = predictNDX(close, vol, stretch);
     else if (cfg.formula.type === 'qqq-from-ndx')    result = predictQQQ(close);
-    else if (cfg.formula.type === 'options-straddle') result = predictStraddle(close, currentTicker);
-    else if (cfg.formula.type === 'volatility-iv')   result = predictVolatility(close, vol);
+    else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') result = predictDynamicRange(close, currentTicker, vol);
 
     if (!result) { alert('Cannot compute prediction — missing required market data.'); return; }
 
