@@ -545,6 +545,21 @@
   function predictDynamicRange(close, ticker, vol) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
     
+    // ======= Phase 3: Dynamic Implied Beta =======
+    let dynamicK = 1.45; // The SPX Baseline
+    let betaNote = '';
+
+    if (data && data.atmIV && marketData.vix) {
+      // Calculate real-time Implied Beta
+      const impliedBeta = data.atmIV / marketData.vix;
+      
+      // Scale the baseline using a square root curve so outliers don't break the math
+      // Math.max ensures we never shrink a low-beta stock below the 1.45 baseline
+      dynamicK = Math.max(1.45, 1.45 * Math.sqrt(impliedBeta));
+      
+      betaNote = ` | Implied Beta: ${impliedBeta.toFixed(2)}x (K: ${dynamicK.toFixed(2)})`;
+    }
+
     // ======= Phase 1: VRP Accelerator =======
     let vrpCrush = 1.0;
     let vrpNote = '';
@@ -559,12 +574,16 @@
       }
     }
 
+    // Apply both the Dynamic Beta multiplier AND the VRP scale to our base metrics
+    const finalMultiplier = dynamicK * vrpCrush;
+
     // 1. Calculate Volatility Method
     const wv = (vol / 100) * Math.sqrt(5 / 252);
-    const volMove = close * wv * 1.45 * vrpCrush; 
+    const volMove = close * wv * finalMultiplier; 
     
     // 2. Calculate Options Straddle Method
-    const straddleMove = data ? (data.straddleMove * 2.0 * vrpCrush) : 0; 
+    // We scale the base 1SD straddle by our new dynamic multiplier
+    const straddleMove = data ? (data.straddleMove * finalMultiplier) : 0; 
     
     // 3. The Quant Decision: Choose the wider range
     const isOptionsWider = straddleMove > volMove;
@@ -577,29 +596,27 @@
     let skewNote = '';
 
     if (data && data.skewRatio) {
-      // Cap the ratio at 1.3 / 0.7 to prevent broken ranges on highly illiquid chains
       const safeSkew = Math.max(0.7, Math.min(data.skewRatio, 1.3));
       
-      // Tilt the symmetrical move asymmetrically
       downMove = finalMove * safeSkew;
       upMove = finalMove * (1 / safeSkew);
 
       if (safeSkew > 1.05) {
-        skewNote = ` | Skew: Bearish (${safeSkew.toFixed(2)}x)`;
+        skewNote = ` | Skew: Bearish`;
       } else if (safeSkew < 0.95) {
-        skewNote = ` | Skew: Bullish (${safeSkew.toFixed(2)}x)`;
+        skewNote = ` | Skew: Bullish`;
       }
     }
 
     return {
-      kLow: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
-      kHigh: isOptionsWider ? (2.0 * vrpCrush) : (1.45 * vrpCrush), 
+      kLow: finalMultiplier, 
+      kHigh: finalMultiplier, 
       wv: wv,
       low: Math.round(close - downMove),
       high: Math.round(close + upMove),
       regime: winningRegime,
       regimeClass: isOptionsWider ? 'high' : 'low',
-      stretchNote: '±$' + finalMove.toFixed(2) + vrpNote + skewNote
+      stretchNote: '±$' + finalMove.toFixed(2) + betaNote + vrpNote + skewNote
     };
   }
 
