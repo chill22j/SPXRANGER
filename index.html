@@ -687,7 +687,7 @@
   function saveToHistory() {
     if (!lastResult) return;
     const t = lastResult.ticker;
-    history[t].unshift({ ...lastResult, savedAt: new Date().toLocaleDateString() });
+    history[t].unshift({ ...lastResult, savedAt: marketData.weekof || new Date().toLocaleDateString() });
     if (history[t].length > 20) history[t] = history[t].slice(0, 20);
     localStorage.setItem('pvi_history_' + t, JSON.stringify(history[t]));
     renderHistory();
