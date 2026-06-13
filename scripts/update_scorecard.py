@@ -62,11 +62,11 @@ def predict_dynamic_range(close, vol, straddle_move):
     expanded_move = base_move * k_factor
     return round(close - expanded_move), round(close + expanded_move)
 
-def grade_row(row, market, today_str):
-    """Grade a row only if friday_close empty AND prev_close_date is before today."""
+def grade_row(row, market, market_date):
+    """Grade a row only if friday_close empty AND prev_close_date is before market_date."""
     if row.get('friday_close'):
         return False
-    if row.get('prev_close_date') >= today_str:
+    if row.get('prev_close_date') >= market_date:
         return False
     
     ticker = row['ticker']
@@ -104,7 +104,7 @@ def next_week_label(today):
     friday = monday + datetime.timedelta(days=4)
     return f"{monday.month}/{monday.day}\u2013{friday.month}/{friday.day}"
 
-def append_predictions(rows, market, week_label, today_str):
+def append_predictions(rows, market, week_label, market_date):
     existing_weeks = {(r['ticker'], r['week_label']) for r in rows}
     new_rows = []
 
@@ -118,7 +118,7 @@ def append_predictions(rows, market, week_label, today_str):
         low, high = predict_spx(spx, vix, stretch)
         new_rows.append({
             'ticker': 'SPX', 'week_label': week_label,
-            'prev_close_date': today_str, 'prev_close': spx,
+            'prev_close_date': market_date, 'prev_close': spx,
             'vol': vix, 'stretch': stretch if stretch is not None else '',
             'predicted_low': low, 'predicted_high': high,
             'friday_close_date': '', 'friday_close': '', 'result': '', 'distance': '',
@@ -129,7 +129,7 @@ def append_predictions(rows, market, week_label, today_str):
         ndx_low, ndx_high = predict_ndx(ndx, vxn, ndx_stretch)
         new_rows.append({
             'ticker': 'NDX', 'week_label': week_label,
-            'prev_close_date': today_str, 'prev_close': ndx,
+            'prev_close_date': market_date, 'prev_close': ndx,
             'vol': vxn, 'stretch': ndx_stretch if ndx_stretch is not None else '',
             'predicted_low': ndx_low, 'predicted_high': ndx_high,
             'friday_close_date': '', 'friday_close': '', 'result': '', 'distance': '',
@@ -140,7 +140,7 @@ def append_predictions(rows, market, week_label, today_str):
         qqq_low, qqq_high = predict_qqq(qqq, ndx, ndx_low, ndx_high)
         new_rows.append({
             'ticker': 'QQQ', 'week_label': week_label,
-            'prev_close_date': today_str, 'prev_close': qqq,
+            'prev_close_date': market_date, 'prev_close': qqq,
             'vol': vxn, 'stretch': ndx_stretch if ndx_stretch is not None else '',
             'predicted_low': qqq_low, 'predicted_high': qqq_high,
             'friday_close_date': '', 'friday_close': '', 'result': '', 'distance': '',
@@ -158,7 +158,7 @@ def append_predictions(rows, market, week_label, today_str):
                 low, high = predict_dynamic_range(close, vol, straddle)
                 new_rows.append({
                     'ticker': sym, 'week_label': week_label,
-                    'prev_close_date': today_str, 'prev_close': close,
+                    'prev_close_date': market_date, 'prev_close': close,
                     'vol': vol, 'stretch': '',
                     'predicted_low': low, 'predicted_high': high,
                     'friday_close_date': '', 'friday_close': '', 'result': '', 'distance': '',
@@ -179,13 +179,17 @@ def main():
             rows = list(csv.DictReader(f))
 
     today = datetime.date.today()
-    today_str = today.isoformat()
+    
+    # Grab the true Friday close date from your market.json
+    market_date = market.get('date', today.isoformat())
 
-    graded = sum(1 for r in rows if grade_row(r, market, today_str))
+    graded = sum(1 for r in rows if grade_row(r, market, market_date))
     print(f"[scorecard] Graded {graded} pending row(s)")
 
     week_label = next_week_label(today)
-    appended = append_predictions(rows, market, week_label, today_str)
+    
+    # Pass market_date down instead of the current day
+    appended = append_predictions(rows, market, week_label, market_date)
     print(f"[scorecard] Appended {appended} new row(s) for {week_label}")
 
     SCORECARD_CSV.parent.mkdir(parents=True, exist_ok=True)
