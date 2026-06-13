@@ -230,6 +230,32 @@ jobs:
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
+                  # ======= Check for Earnings This Week =======
+                  earnings_this_week = False
+                  try:
+                      # Pull the next few upcoming earnings dates
+                      earnings_df = t.get_earnings_dates(limit=5)
+                      if earnings_df is not None and not earnings_df.empty:
+                          fri_dt = mon_dt + datetime.timedelta(days=4)
+                          
+                          # Loop through to see if any fall between Monday and Friday
+                          for edate in earnings_df.index:
+                              naive_date = edate.to_pydatetime().replace(tzinfo=None)
+                              if mon_dt.date() <= naive_date.date() <= fri_dt.date():
+                                  earnings_this_week = True
+                                  break
+                  except Exception as e:
+                      print(f"Could not fetch earnings for {yf_symbol}: {e}")
+
+                  # Make sure to add the new flag to your return dictionary!
+                  return {
+                      "close": close_price,
+                      "atmStrike": float(atm_strike),
+                      "straddleMove": straddle_move,
+                      "atmIV": atm_iv,
+                      "earningsThisWeek": earnings_this_week  # <--- ADD THIS LINE
+                  }
+
                   return {
                       "close": close_price,
                       "atmStrike": float(atm_strike),
