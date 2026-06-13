@@ -1,132 +1,161 @@
 {
-  "spx": 7383.74,
-  "vix": 21.51,
-  "hv20": 15.01,
-  "ma50": 7155.96,
-  "stretch": 3.18,
-  "ndx": 28957.6,
-  "vxn": 30.47,
-  "qqq": 705.06,
-  "ndxMa50": 27446.08,
-  "ndxStretch": 5.51,
-  "date": "2026-06-05",
-  "weekof": "6/8-6/12",
-  "updated": "2026-06-09T01:16:11Z",
+  "spx": 7431.46,
+  "vix": 17.68,
+  "hv20": 15.32,
+  "ma50": 7247.79,
+  "stretch": 2.53,
+  "ndx": 29635.95,
+  "vxn": 27.27,
+  "qqq": 721.34,
+  "ndxMa50": 28019.19,
+  "ndxStretch": 5.77,
+  "date": "2026-06-12",
+  "weekof": "6/15-6/19",
+  "updated": "2026-06-13T15:43:54Z",
   "options": {
-    "expiry": "6/12",
-    "maxPain": 6780,
-    "topPuts": [],
+    "expiry": "6/18",
+    "maxPain": 7000,
+    "topPuts": [
+      {
+        "strike": 7000,
+        "oi": 351965
+      },
+      {
+        "strike": 8000,
+        "oi": 120483
+      },
+      {
+        "strike": 7300,
+        "oi": 49163
+      },
+      {
+        "strike": 6800,
+        "oi": 47957
+      }
+    ],
     "topCalls": [
       {
-        "strike": 6780,
-        "oi": 3
+        "strike": 7000,
+        "oi": 341365
+      },
+      {
+        "strike": 7400,
+        "oi": 60341
+      },
+      {
+        "strike": 7600,
+        "oi": 46364
+      },
+      {
+        "strike": 7150,
+        "oi": 41282
       }
     ]
   },
   "ndxOptions": {
-    "expiry": "6/12",
-    "maxPain": 29750,
+    "expiry": "6/18",
+    "maxPain": 27600,
     "topPuts": [
       {
-        "strike": 28000,
-        "oi": 131
-      },
-      {
-        "strike": 26900,
-        "oi": 130
-      },
-      {
-        "strike": 28900,
-        "oi": 127
-      },
-      {
         "strike": 27500,
-        "oi": 122
+        "oi": 1930
+      },
+      {
+        "strike": 26000,
+        "oi": 482
+      },
+      {
+        "strike": 27000,
+        "oi": 471
+      },
+      {
+        "strike": 28000,
+        "oi": 460
       }
     ],
     "topCalls": [
       {
-        "strike": 29900,
-        "oi": 128
+        "strike": 29200,
+        "oi": 3637
       },
       {
-        "strike": 31100,
-        "oi": 85
+        "strike": 34000,
+        "oi": 1482
       },
       {
-        "strike": 29800,
-        "oi": 75
+        "strike": 26000,
+        "oi": 656
       },
       {
-        "strike": 27000,
-        "oi": 71
+        "strike": 26500,
+        "oi": 466
       }
     ]
   },
   "qqqOptions": {
-    "expiry": "6/12",
-    "maxPain": 720,
+    "expiry": "6/18",
+    "maxPain": 690,
     "topPuts": [
       {
-        "strike": 690,
-        "oi": 11288
+        "strike": 650,
+        "oi": 74471
       },
       {
         "strike": 700,
-        "oi": 9799
+        "oi": 60315
       },
       {
-        "strike": 710,
-        "oi": 8839
+        "strike": 680,
+        "oi": 52249
       },
       {
-        "strike": 740,
-        "oi": 8517
+        "strike": 640,
+        "oi": 47348
       }
     ],
     "topCalls": [
       {
         "strike": 740,
-        "oi": 14010
+        "oi": 40294
       },
       {
-        "strike": 720,
-        "oi": 13395
+        "strike": 695,
+        "oi": 33793
       },
       {
-        "strike": 730,
-        "oi": 11403
+        "strike": 620,
+        "oi": 30500
       },
       {
         "strike": 750,
-        "oi": 10540
+        "oi": 30434
       }
     ]
   },
   "individuals": {
     "NVDA": {
-      "close": 205.1,
+      "close": 205.19,
       "atmStrike": 205.0,
-      "straddleMove": 6.98,
-      "atmIV": 44.81
+      "straddleMove": 6.42,
+      "atmIV": 36.46
     },
     "TSLA": {
-      "close": 391.0,
-      "atmStrike": 390.0,
-      "straddleMove": 21.3,
-      "atmIV": 58.36
+      "close": 406.43,
+      "atmStrike": 407.5,
+      "straddleMove": 18.81,
+      "atmIV": 53.12
     },
     "AAPL": {
-      "close": 307.34,
-      "atmStrike": 307.5,
-      "straddleMove": 8.07,
-      "atmIV": 33.03
+      "close": 291.13,
+      "atmStrike": 290.0,
+      "straddleMove": 6.14,
+      "atmIV": 24.71
     },
     "XOM": {
-      "close": 149.92,
-      "atmStrike": 150.0,
-      "straddleMove": 4.25,
-      "atmIV": 40.06
+      "close": 147.01,
+      "atmStrike": 147.0,
+      "straddleMove": 4.07,
+      "atmIV": 33.06
     }
   }
 }
