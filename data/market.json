@@ -11,7 +11,7 @@
   "ndxStretch": 5.77,
   "date": "2026-06-12",
   "weekof": "6/15-6/19",
-  "updated": "2026-06-13T17:34:18Z",
+  "updated": "2026-06-14T20:41:22Z",
   "options": {
     "expiry": "6/18",
     "maxPain": 7000,
@@ -137,28 +137,112 @@
       "close": 205.19,
       "atmStrike": 205.0,
       "straddleMove": 6.42,
-      "atmIV": 36.46,
+      "atmIV": 39.94,
       "earningsThisWeek": false
     },
     "TSLA": {
       "close": 406.43,
       "atmStrike": 407.5,
       "straddleMove": 18.81,
-      "atmIV": 53.12,
+      "atmIV": 58.19,
       "earningsThisWeek": false
     },
     "AAPL": {
       "close": 291.13,
       "atmStrike": 290.0,
       "straddleMove": 6.14,
-      "atmIV": 24.71,
+      "atmIV": 27.07,
       "earningsThisWeek": false
     },
     "XOM": {
       "close": 147.01,
       "atmStrike": 147.0,
       "straddleMove": 4.07,
-      "atmIV": 33.06,
+      "atmIV": 36.21,
+      "earningsThisWeek": false
+    },
+    "AMZN": {
+      "close": 238.55,
+      "atmStrike": 237.5,
+      "straddleMove": 6.97,
+      "atmIV": 37.15,
+      "earningsThisWeek": false
+    },
+    "GOOG": {
+      "close": 358.16,
+      "atmStrike": 357.5,
+      "straddleMove": 10.09,
+      "atmIV": 36.32,
+      "earningsThisWeek": false
+    },
+    "MSFT": {
+      "close": 390.74,
+      "atmStrike": 390.0,
+      "straddleMove": 10.94,
+      "atmIV": 35.76,
+      "earningsThisWeek": false
+    },
+    "META": {
+      "close": 566.98,
+      "atmStrike": 565.0,
+      "straddleMove": 17.11,
+      "atmIV": 39.34,
+      "earningsThisWeek": false
+    },
+    "NFLX": {
+      "close": 80.34,
+      "atmStrike": 80.0,
+      "straddleMove": 2.12,
+      "atmIV": 33.47,
+      "earningsThisWeek": false
+    },
+    "AMD": {
+      "close": 511.57,
+      "atmStrike": 512.5,
+      "straddleMove": 33.47,
+      "atmIV": 82.36,
+      "earningsThisWeek": false
+    },
+    "DELL": {
+      "close": 395.57,
+      "atmStrike": 395.0,
+      "straddleMove": 24.33,
+      "atmIV": 77.56,
+      "earningsThisWeek": false
+    },
+    "MU": {
+      "close": 981.61,
+      "atmStrike": 980.0,
+      "straddleMove": 85.79,
+      "atmIV": 110.26,
+      "earningsThisWeek": false
+    },
+    "NOW": {
+      "close": 102.15,
+      "atmStrike": 102.0,
+      "straddleMove": 5.46,
+      "atmIV": 67.41,
+      "earningsThisWeek": false
+    },
+    "CAT": {
+      "close": 910.57,
+      "atmStrike": 910.0,
+      "straddleMove": 30.64,
+      "atmIV": 45.88,
+      "earningsThisWeek": false
+    },
+    "GS": {
+      "close": 1062.75,
+      "atmStrike": 1065.0,
+      "straddleMove": 31.0,
+      "atmIV": 39.32,
+      "earningsThisWeek": false
+    },
+    "NBIS": {
+      "close": 232.36,
+      "atmStrike": 232.5,
+      "straddleMove": 22.99,
+      "atmIV": 124.73,
       "earningsThisWeek": false
     }
   }
