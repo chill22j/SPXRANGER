@@ -267,7 +267,7 @@ jobs:
                   return None
 
           individual_data = {}
-          for sym in ["NVDA", "TSLA", "AAPL", "XOM"]:
+          for sym in ["NVDA", "TSLA", "AAPL", "XOM", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "CAT", "GS", "NBIS"]:
               individual_data[sym] = compute_individual_metrics(sym, mon)
               print(f"{sym} Data: {individual_data[sym]}")
 
