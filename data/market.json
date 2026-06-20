@@ -1,7 +1,7 @@
 {
   "spx": 7431.46,
   "vix": 17.68,
-  "hv20": 15.32,
+  "hv20": 15.63,
   "ma50": 7247.79,
   "stretch": 2.53,
   "ndx": 29635.95,
@@ -11,124 +11,90 @@
   "ndxStretch": 5.77,
   "date": "2026-06-12",
   "weekof": "6/15-6/19",
-  "updated": "2026-06-14T20:41:22Z",
+  "updated": "2026-06-20T15:47:18Z",
   "options": {
-    "expiry": "6/18",
-    "maxPain": 7000,
-    "topPuts": [
-      {
-        "strike": 7000,
-        "oi": 351965
-      },
-      {
-        "strike": 8000,
-        "oi": 120483
-      },
-      {
-        "strike": 7300,
-        "oi": 49163
-      },
-      {
-        "strike": 6800,
-        "oi": 47957
-      }
-    ],
-    "topCalls": [
-      {
-        "strike": 7000,
-        "oi": 341365
-      },
-      {
-        "strike": 7400,
-        "oi": 60341
-      },
-      {
-        "strike": 7600,
-        "oi": 46364
-      },
-      {
-        "strike": 7150,
-        "oi": 41282
-      }
-    ]
+    "expiry": "6/22",
+    "maxPain": null,
+    "topPuts": [],
+    "topCalls": []
   },
   "ndxOptions": {
-    "expiry": "6/18",
-    "maxPain": 27600,
+    "expiry": "6/22",
+    "maxPain": 29950,
     "topPuts": [
       {
         "strike": 27500,
-        "oi": 1930
+        "oi": 341
       },
       {
-        "strike": 26000,
-        "oi": 482
+        "strike": 27700,
+        "oi": 315
       },
       {
-        "strike": 27000,
-        "oi": 471
+        "strike": 27200,
+        "oi": 166
       },
       {
-        "strike": 28000,
-        "oi": 460
+        "strike": 28200,
+        "oi": 150
       }
     ],
     "topCalls": [
       {
-        "strike": 29200,
-        "oi": 3637
+        "strike": 30000,
+        "oi": 108
       },
       {
-        "strike": 34000,
-        "oi": 1482
+        "strike": 30500,
+        "oi": 98
       },
       {
-        "strike": 26000,
-        "oi": 656
+        "strike": 31600,
+        "oi": 74
       },
       {
-        "strike": 26500,
-        "oi": 466
+        "strike": 32000,
+        "oi": 70
       }
     ]
   },
   "qqqOptions": {
-    "expiry": "6/18",
-    "maxPain": 690,
+    "expiry": "6/22",
+    "maxPain": 732,
     "topPuts": [
       {
-        "strike": 650,
-        "oi": 74471
+        "strike": 728,
+        "oi": 10676
       },
       {
-        "strike": 700,
-        "oi": 60315
+        "strike": 732,
+        "oi": 8025
       },
       {
-        "strike": 680,
-        "oi": 52249
+        "strike": 724,
+        "oi": 7032
       },
       {
-        "strike": 640,
-        "oi": 47348
+        "strike": 726,
+        "oi": 6780
       }
     ],
     "topCalls": [
       {
+        "strike": 760,
+        "oi": 2925
+      },
+      {
         "strike": 740,
-        "oi": 40294
+        "oi": 2822
       },
       {
-        "strike": 695,
-        "oi": 33793
+        "strike": 730,
+        "oi": 2143
       },
       {
-        "strike": 620,
-        "oi": 30500
-      },
-      {
-        "strike": 750,
-        "oi": 30434
+        "strike": 785,
+        "oi": 2112
       }
     ]
   },
@@ -136,113 +102,113 @@
     "NVDA": {
       "close": 205.19,
       "atmStrike": 205.0,
-      "straddleMove": 6.42,
-      "atmIV": 39.94,
+      "straddleMove": 5.59,
+      "atmIV": 33.35,
       "earningsThisWeek": false
     },
     "TSLA": {
       "close": 406.43,
       "atmStrike": 407.5,
-      "straddleMove": 18.81,
-      "atmIV": 58.19,
+      "straddleMove": 9.19,
+      "atmIV": 32.47,
       "earningsThisWeek": false
     },
     "AAPL": {
       "close": 291.13,
       "atmStrike": 290.0,
-      "straddleMove": 6.14,
-      "atmIV": 27.07,
+      "straddleMove": 7.4,
+      "atmIV": 29.9,
       "earningsThisWeek": false
     },
     "XOM": {
       "close": 147.01,
       "atmStrike": 147.0,
-      "straddleMove": 4.07,
-      "atmIV": 36.21,
+      "straddleMove": 8.69,
+      "atmIV": 55.03,
       "earningsThisWeek": false
     },
     "AMZN": {
       "close": 238.55,
       "atmStrike": 237.5,
-      "straddleMove": 6.97,
-      "atmIV": 37.15,
+      "straddleMove": 6.17,
+      "atmIV": 31.57,
       "earningsThisWeek": false
     },
     "GOOG": {
       "close": 358.16,
       "atmStrike": 357.5,
-      "straddleMove": 10.09,
-      "atmIV": 36.32,
+      "straddleMove": 12.9,
+      "atmIV": 34.1,
       "earningsThisWeek": false
     },
     "MSFT": {
       "close": 390.74,
       "atmStrike": 390.0,
-      "straddleMove": 10.94,
-      "atmIV": 35.76,
+      "straddleMove": 9.97,
+      "atmIV": 31.12,
       "earningsThisWeek": false
     },
     "META": {
-      "close": 566.98,
-      "atmStrike": 565.0,
-      "straddleMove": 17.11,
-      "atmIV": 39.34,
+      "close": 566.45,
+      "atmStrike": 567.5,
+      "straddleMove": 11.78,
+      "atmIV": 30.37,
       "earningsThisWeek": false
     },
     "NFLX": {
       "close": 80.34,
       "atmStrike": 80.0,
-      "straddleMove": 2.12,
-      "atmIV": 33.47,
+      "straddleMove": 2.91,
+      "atmIV": 33.03,
       "earningsThisWeek": false
     },
     "AMD": {
       "close": 511.57,
       "atmStrike": 512.5,
-      "straddleMove": 33.47,
-      "atmIV": 82.36,
+      "straddleMove": 40.71,
+      "atmIV": 74.95,
       "earningsThisWeek": false
     },
     "DELL": {
       "close": 395.57,
       "atmStrike": 395.0,
-      "straddleMove": 24.33,
-      "atmIV": 77.56,
+      "straddleMove": 32.17,
+      "atmIV": 81.06,
       "earningsThisWeek": false
     },
     "MU": {
       "close": 981.61,
       "atmStrike": 980.0,
-      "straddleMove": 85.79,
-      "atmIV": 110.26,
+      "straddleMove": 170.64,
+      "atmIV": 132.48,
       "earningsThisWeek": false
     },
     "NOW": {
       "close": 102.15,
       "atmStrike": 102.0,
-      "straddleMove": 5.46,
-      "atmIV": 67.41,
+      "straddleMove": 7.29,
+      "atmIV": 57.5,
       "earningsThisWeek": false
     },
     "CAT": {
       "close": 910.57,
       "atmStrike": 910.0,
-      "straddleMove": 30.64,
-      "atmIV": 45.88,
+      "straddleMove": 68.9,
+      "atmIV": 53.31,
       "earningsThisWeek": false
     },
     "GS": {
       "close": 1062.75,
       "atmStrike": 1065.0,
-      "straddleMove": 31.0,
-      "atmIV": 39.32,
+      "straddleMove": 40.29,
+      "atmIV": 38.03,
       "earningsThisWeek": false
     },
     "NBIS": {
       "close": 232.36,
       "atmStrike": 232.5,
-      "straddleMove": 22.99,
-      "atmIV": 124.73,
+      "straddleMove": 52.38,
+      "atmIV": 142.0,
       "earningsThisWeek": false
     }
   }
