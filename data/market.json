@@ -11,7 +11,7 @@
   "ndxStretch": 6.75,
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
-  "updated": "2026-06-21T21:02:24Z",
+  "updated": "2026-06-21T21:16:16Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -143,6 +143,22 @@
       "put15Price": 134.0,
       "put15Delta": -0.15,
       "normPutPremium": 0.441
+    },
+    "SPY": {
+      "close": 746.74,
+      "atmStrike": 747.0,
+      "straddleMove": 9.46,
+      "atmIV": 14.63,
+      "earningsThisWeek": false,
+      "baseline": "SPY",
+      "call15Strike": 758.0,
+      "call15Price": 1.33,
+      "call15Delta": 0.14,
+      "normCallPremium": 0.177,
+      "put15Strike": 734.0,
+      "put15Price": 1.78,
+      "put15Delta": -0.16,
+      "normPutPremium": 0.238
     },
     "QQQ": {
       "close": 740.62,
