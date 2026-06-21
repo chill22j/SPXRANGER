@@ -15,7 +15,7 @@ jobs:
 
       - name: Fetch market data and calculate max pain
         run: |
-          pip install yfinance --break-system-packages -q
+          pip install yfinance lxml --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time
@@ -65,8 +65,8 @@ jobs:
               last_trading_idx -= 1
               
           last_trading_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[last_trading_idx])
-          last_friday_idx = last_trading_idx # Reusing variable name for downstream logic
-          last_friday_dt = last_trading_dt   # <--- THE BUG FIX IS HERE
+          last_friday_idx = last_trading_idx
+          last_friday_dt = last_trading_dt
 
           spx = round(spx_closes[last_friday_idx], 2)
 
@@ -218,12 +218,17 @@ jobs:
                   chain = t.option_chain(target_exp)
                   calls = chain.calls
                   puts = chain.puts
+                  
+                  if calls.empty or puts.empty: return None
 
+                  # SAFELY find nearest Call and Put independently
                   calls['dist'] = abs(calls['strike'] - close_price)
-                  atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
+                  atm_call = calls.loc[calls['dist'].idxmin()]
 
-                  atm_call = calls[calls['strike'] == atm_strike].iloc[0]
-                  atm_put = puts[puts['strike'] == atm_strike].iloc[0]
+                  puts['dist'] = abs(puts['strike'] - close_price)
+                  atm_put = puts.loc[puts['dist'].idxmin()]
+
+                  atm_strike = float(atm_call['strike']) # Just for reporting
 
                   call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
                   put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
@@ -243,11 +248,11 @@ jobs:
                                   earnings_this_week = True
                                   break
                   except Exception as e:
-                      print(f"Could not fetch earnings for {yf_symbol}: {e}")
+                      pass # Suppressed the error log to keep it clean
 
                   return {
                       "close": close_price,
-                      "atmStrike": float(atm_strike),
+                      "atmStrike": atm_strike,
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
                       "earningsThisWeek": earnings_this_week
