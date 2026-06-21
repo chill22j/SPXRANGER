@@ -243,11 +243,21 @@ jobs:
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
-                  # --- 2. NEW LOGIC (Dynamic Rolling Delta) ---
-                  # Mon=0(10Δ), Tue=1(15Δ), Wed=2(20Δ), Thu=3(25Δ), Fri=4(30Δ)
-                  today_weekday = datetime.datetime.utcnow().weekday()
-                  delta_map = {0: 0.10, 1: 0.15, 2: 0.20, 3: 0.25, 4: 0.30}
-                  target_delta = delta_map.get(today_weekday, 0.15) 
+                  # --- 2. NEW LOGIC (DTE-Based Rolling Delta) ---
+                  # 4+ Days = 10Δ, 3 Days = 15Δ, 2 Days = 20Δ, 1 Day = 25Δ, 0 Days = 30Δ
+                  today_date = datetime.datetime.utcnow().date()
+                  dte = (exp_dt.date() - today_date).days
+                  
+                  if dte >= 4:
+                      target_delta = 0.10
+                  elif dte == 3:
+                      target_delta = 0.15
+                  elif dte == 2:
+                      target_delta = 0.20
+                  elif dte == 1:
+                      target_delta = 0.25
+                  else:
+                      target_delta = 0.30
 
                   # Find Target Delta Call
                   best_call = None
