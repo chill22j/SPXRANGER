@@ -489,47 +489,38 @@
       
       let close, vol, stretch;
       let earningsHtml = ''; 
-      let valBadgeHtml = ''; // NEW: Container for the mini badge
+      let valBadgeHtml = ''; 
 
       if (cfg.isIndividual && marketData.individuals && marketData.individuals[ticker]) {
-        close = marketData.individuals[ticker].close;
-        vol = marketData.individuals[ticker].atmIV;
+        const stockData = marketData.individuals[ticker];
+        close = stockData.close;
+        vol = stockData.atmIV;
         
-        if (marketData.individuals[ticker].earningsThisWeek) {
+        if (stockData.earningsThisWeek) {
           earningsHtml = `<span class="earnings-badge">EARNINGS</span>`;
         }
 
-        // NEW: 15-Delta Badge for the Summary Table
-        const stockData = marketData.individuals[ticker];
-        if (stockData.normPremium) {
+        // THE FIX: Added "stockData &&" to prevent the crash if a ticker is blank!
+        if (stockData && stockData.normPremium) {
             const isNasdaq = stockData.baseline === 'QQQ';
             const baseIV = isNasdaq ? marketData.vxn : marketData.vix;
-            const indexPremiumRaw = (baseIV / 100) * 0.14; 
-            const stockPremiumRaw = stockData.normPremium / 100;
-            const premiumRatio = stockPremiumRaw / indexPremiumRaw;
             
-            let badgeClass = "badge-fair";
-            
-            // Trigger Red for 200%+ (Expensive) or Blue for 50%- (Cheap)
-            if (premiumRatio >= 2.0) {
-                badgeClass = "badge-expensive";
-            } else if (premiumRatio <= 0.5) {
-                badgeClass = "badge-cheap";
-            }
-            
-            // Clean percentage output with strict color coding
-            valBadgeHtml = `<span class="badge ${badgeClass}" style="margin-left:8px; font-size:0.75em; padding:2px 5px; vertical-align:middle;">${Math.round(premiumRatio * 100)}%</span>`;
-        }
-            
-            // Clean percentage output with strict color coding
-            valBadgeHtml = `<span class="badge ${badgeClass}" style="margin-left:8px; font-size:0.75em; padding:2px 5px; vertical-align:middle;">${Math.round(premiumRatio * 100)}%</span>`;
-        }
-            
-            // Only show a badge on the summary table if it's an extreme outlier
-            if (premiumRatio > 1.25) {
-                valBadgeHtml = `<span class="badge badge-expensive" style="margin-left:6px; font-size:0.7em; padding:2px 4px; vertical-align:middle;">EXPENSIVE</span>`;
-            } else if (premiumRatio < 0.85) {
-                valBadgeHtml = `<span class="badge badge-cheap" style="margin-left:6px; font-size:0.7em; padding:2px 4px; vertical-align:middle;">CHEAP</span>`;
+            // Extra safety check in case index volatility is missing
+            if (baseIV) {
+                const indexPremiumRaw = (baseIV / 100) * 0.14; 
+                const stockPremiumRaw = stockData.normPremium / 100;
+                const premiumRatio = stockPremiumRaw / indexPremiumRaw;
+                
+                let badgeClass = "badge-fair";
+                
+                // Trigger Red for 200%+ (Expensive) or Blue for 50%- (Cheap)
+                if (premiumRatio >= 2.0) {
+                    badgeClass = "badge-expensive";
+                } else if (premiumRatio <= 0.5) {
+                    badgeClass = "badge-cheap";
+                }
+                
+                valBadgeHtml = `<span class="badge ${badgeClass}" style="margin-left:8px; font-size:0.75em; padding:2px 5px; vertical-align:middle;">${Math.round(premiumRatio * 100)}%</span>`;
             }
         }
 
@@ -547,7 +538,6 @@
         else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') pred = predictDynamicRange(close, ticker, vol);
       }
       
-      // Included the valBadgeHtml inside the ticker cell
       rows.push(
         '<tr>' +
           '<td class="ticker-cell">' + cfg.label + ' ' + earningsHtml + valBadgeHtml + '<span class="ticker-sub">' + cfg.longLabel + '</span></td>' +
@@ -564,6 +554,7 @@
       : (marketData.date || '');
     status.textContent = '✓ Auto-loaded as of ' + updated + ' • Tap a ticker tab above for full details.';
   }
+  
   function renderTicker() {
     const cfg = TICKER_CONFIG[currentTicker];
     // Update labels
