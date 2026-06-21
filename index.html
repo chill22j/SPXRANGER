@@ -23,28 +23,8 @@
       font-size: 0.9em;
       color: var(--text-muted);
     }
-    .badge {
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 0.85em;
-      letter-spacing: 0.5px;
-    }
-    .badge-expensive { 
-      background-color: rgba(239, 68, 68, 0.15); 
-      color: #ef4444; 
-      border: 1px solid rgba(239, 68, 68, 0.3); 
-    }
-    .badge-cheap { 
-      background-color: rgba(59, 130, 246, 0.15); 
-      color: #3b82f6; 
-      border: 1px solid rgba(59, 130, 246, 0.3); 
-    }
-    .badge-fair { 
-      background-color: rgba(255, 255, 255, 0.1); 
-      color: #ffffff; 
-      border: 1px solid rgba(255, 255, 255, 0.3); 
-    }
+    .val-expensive { background-color: rgba(239, 68, 68, 0.25) !important; color: #ef4444 !important; font-weight: bold; }
+    .val-cheap { background-color: rgba(59, 130, 246, 0.25) !important; color: #3b82f6 !important; font-weight: bold; }
   .earnings-badge {
     background-color: #ff9800;
     color: #111;
@@ -218,10 +198,16 @@
     <table class="summary-table" id="summaryTable">
       <thead>
         <tr>
-          <th>Ticker</th>
-          <th>Prev Close</th>
-          <th class="th-low">Predicted Low</th>
-          <th class="th-high">Predicted High</th>
+          <th>TICKER</th>
+          <th>PREV CLOSE</th>
+          <th class="th-low">PRED LOW</th>
+          <th class="th-high">PRED HIGH</th>
+          <th>C STRIKE</th>
+          <th>C PRICE</th>
+          <th>C DELTA</th>
+          <th>P STRIKE</th>
+          <th>P PRICE</th>
+          <th>P DELTA</th>
         </tr>
       </thead>
       <tbody id="summaryBody"></tbody>
@@ -475,7 +461,7 @@
     const weekEl = document.getElementById('summaryWeek');
 
     if (!marketData) {
-      body.innerHTML = '<tr><td colspan="4" class="empty-cell">Waiting for market data…</td></tr>';
+      body.innerHTML = '<tr><td colspan="10" class="empty-cell">Waiting for market data…</td></tr>';
       weekEl.textContent = '—';
       status.textContent = '';
       return;
@@ -489,7 +475,10 @@
       
       let close, vol, stretch;
       let earningsHtml = ''; 
-      let valBadgeHtml = ''; 
+      
+      // New Option Variables
+      let cStrike = '—', cPrice = '—', cDelta = '—', pStrike = '—', pPrice = '—', pDelta = '—';
+      let cClass = '', pClass = '';
 
       if (cfg.isIndividual && marketData.individuals && marketData.individuals[ticker]) {
         const stockData = marketData.individuals[ticker];
@@ -497,30 +486,32 @@
         vol = stockData.atmIV;
         
         if (stockData.earningsThisWeek) {
-          earningsHtml = `<span class="earnings-badge">EARNINGS</span>`;
+          earningsHtml = `<span class="earnings-badge" style="margin-left:6px; font-size:0.7em;">EARNINGS</span>`;
         }
 
-        // THE FIX: Added "stockData &&" to prevent the crash if a ticker is blank!
-        if (stockData && stockData.normPremium) {
+        // Calculate independent relative values for Calls and Puts
+        if (stockData && stockData.normCallPremium && stockData.normPutPremium) {
+            cStrike = stockData.call15Strike;
+            cPrice = stockData.call15Price.toFixed(2);
+            cDelta = stockData.call15Delta.toFixed(2);
+            
+            pStrike = stockData.put15Strike;
+            pPrice = stockData.put15Price.toFixed(2);
+            pDelta = stockData.put15Delta.toFixed(2);
+
             const isNasdaq = stockData.baseline === 'QQQ';
             const baseIV = isNasdaq ? marketData.vxn : marketData.vix;
             
-            // Extra safety check in case index volatility is missing
             if (baseIV) {
                 const indexPremiumRaw = (baseIV / 100) * 0.14; 
-                const stockPremiumRaw = stockData.normPremium / 100;
-                const premiumRatio = stockPremiumRaw / indexPremiumRaw;
                 
-                let badgeClass = "badge-fair";
-                
-                // Trigger Red for 200%+ (Expensive) or Blue for 50%- (Cheap)
-                if (premiumRatio >= 2.0) {
-                    badgeClass = "badge-expensive";
-                } else if (premiumRatio <= 0.5) {
-                    badgeClass = "badge-cheap";
-                }
-                
-                valBadgeHtml = `<span class="badge ${badgeClass}" style="margin-left:8px; font-size:0.75em; padding:2px 5px; vertical-align:middle;">${Math.round(premiumRatio * 100)}%</span>`;
+                const callRatio = (stockData.normCallPremium / 100) / indexPremiumRaw;
+                if (callRatio >= 2.0) cClass = 'val-expensive';
+                else if (callRatio <= 0.5) cClass = 'val-cheap';
+
+                const putRatio = (stockData.normPutPremium / 100) / indexPremiumRaw;
+                if (putRatio >= 2.0) pClass = 'val-expensive';
+                else if (putRatio <= 0.5) pClass = 'val-cheap';
             }
         }
 
@@ -540,10 +531,16 @@
       
       rows.push(
         '<tr>' +
-          '<td class="ticker-cell">' + cfg.label + ' ' + earningsHtml + valBadgeHtml + '<span class="ticker-sub">' + cfg.longLabel + '</span></td>' +
+          '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
           '<td class="close-cell">' + (close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>') + '</td>' +
           '<td class="' + (pred ? 'low-cell' : 'empty-cell') + '">' + (pred ? pred.low.toLocaleString() : '—') + '</td>' +
           '<td class="' + (pred ? 'high-cell' : 'empty-cell') + '">' + (pred ? pred.high.toLocaleString() : '—') + '</td>' +
+          '<td class="opt-cell">' + cStrike + '</td>' +
+          '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
+          '<td class="opt-cell">' + cDelta + '</td>' +
+          '<td class="opt-cell">' + pStrike + '</td>' +
+          '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
+          '<td class="opt-cell">' + pDelta + '</td>' +
         '</tr>'
       );
     }
