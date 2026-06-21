@@ -18,15 +18,22 @@ jobs:
           pip install yfinance --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
-          import urllib.request, json, math, datetime
+          import urllib.request, json, math, datetime, time
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
           def fetch_chart(symbol, period="3mo"):
               url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
               req = urllib.request.Request(url, headers=HEADERS)
-              with urllib.request.urlopen(req, timeout=15) as r:
-                  return json.loads(r.read())
+              # Add a retry loop to prevent instant crashes if Yahoo blocks the IP
+              for attempt in range(5):
+                  try:
+                      with urllib.request.urlopen(req, timeout=10) as r:
+                          return json.loads(r.read())
+                  except Exception as e:
+                      print(f"Fetch {symbol} failed ({e}), retrying in 3s...")
+                      time.sleep(3)
+              raise Exception(f"Completely failed to fetch {symbol} after 5 attempts.")
 
           # Fetch SPX (3mo for MA50) and VIX
           spx_data = fetch_chart("%5EGSPC", "3mo")
@@ -205,90 +212,4 @@ jobs:
                       days_from_mon = (exp_date - mon_dt.date()).days
                       if 0 <= days_from_mon <= 4:
                           target_exp = exp
-                  if not target_exp and expirations:
-                      target_exp = expirations[0]
-
-                  chain = t.option_chain(target_exp)
-                  calls = chain.calls
-                  puts = chain.puts
-
-                  calls['dist'] = abs(calls['strike'] - close_price)
-                  atm_strike = calls.loc[calls['dist'].idxmin()]['strike']
-
-                  atm_call = calls[calls['strike'] == atm_strike].iloc[0]
-                  atm_put = puts[puts['strike'] == atm_strike].iloc[0]
-
-                  call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
-                  put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
-
-                  straddle_move = round((call_mark + put_mark) * 0.85, 2)
-                  atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
-
-                  # ======= Check for Earnings This Week =======
-                  earnings_this_week = False
-                  try:
-                      # Pull the next few upcoming earnings dates
-                      earnings_df = t.get_earnings_dates(limit=5)
-                      if earnings_df is not None and not earnings_df.empty:
-                          fri_dt = mon_dt + datetime.timedelta(days=4)
-                          
-                          # Loop through to see if any fall between Monday and Friday
-                          for edate in earnings_df.index:
-                              naive_date = edate.to_pydatetime().replace(tzinfo=None)
-                              if mon_dt.date() <= naive_date.date() <= fri_dt.date():
-                                  earnings_this_week = True
-                                  break
-                  except Exception as e:
-                      print(f"Could not fetch earnings for {yf_symbol}: {e}")
-
-                  # Make sure to add the new flag to your return dictionary!
-                  return {
-                      "close": close_price,
-                      "atmStrike": float(atm_strike),
-                      "straddleMove": straddle_move,
-                      "atmIV": atm_iv,
-                      "earningsThisWeek": earnings_this_week  # <--- ADD THIS LINE
-                  }
-
-                  return {
-                      "close": close_price,
-                      "atmStrike": float(atm_strike),
-                      "straddleMove": straddle_move,
-                      "atmIV": atm_iv
-                  }
-              except Exception as e:
-                  print(f"Error fetching individual data for {yf_symbol}: {e}")
-                  return None
-
-          individual_data = {}
-          for sym in ["NVDA", "TSLA", "AAPL", "XOM", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "CAT", "GS", "NBIS"]:
-              individual_data[sym] = compute_individual_metrics(sym, mon)
-              print(f"{sym} Data: {individual_data[sym]}")
-
-          payload = {
-              "spx": spx, "vix": vix, "hv20": hv20,
-              "ma50": ma50, "stretch": stretch_pct,
-              "ndx": ndx, "vxn": vxn, "qqq": qqq,
-              "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
-              "date": date_str, "weekof": weekof,
-              "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
-              "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts or [], "topCalls": ndx_top_calls or []},
-              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []},
-              "individuals": individual_data
-          }
-          with open("data/market.json", "w") as f:
-              json.dump(payload, f, indent=2)
-          print(f"SAVED: SPX={spx} VIX={vix} MA50={ma50} stretch={stretch_pct}% maxPain={max_pain}")
-          PYEOF
-
-      - name: Update scorecard
-        run: python3 scripts/update_scorecard.py
-
-      - name: Commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/market.json data/scorecard.csv
-          git diff --staged --quiet || git commit -m "chore: Friday market update"
-          git push
+                  if not target_exp and expir
