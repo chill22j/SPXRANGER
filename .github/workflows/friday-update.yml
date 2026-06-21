@@ -243,21 +243,41 @@ jobs:
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
-                  # --- 2. NEW LOGIC (15-Delta Valuation) ---
+                  # --- 2. NEW LOGIC (Both 15-Delta Call & Put) ---
+                  # Find 15-Delta Call
+                  best_call = None
+                  min_call_diff = float('inf')
+                  best_call_delta = 0.15
+                  for _, row in calls.iterrows():
+                      if row['impliedVolatility'] <= 0: continue
+                      d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=True)
+                      diff = abs(d - 0.15)
+                      if diff < min_call_diff:
+                          min_call_diff = diff
+                          best_call = row
+                          best_call_delta = d
+
+                  if best_call is None: best_call = calls.iloc[0]
+                  call15_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
+                  norm_call_premium = call15_mark / close_price
+
+                  # Find 15-Delta Put
                   best_put = None
-                  min_delta_diff = float('inf')
+                  min_put_diff = float('inf')
+                  best_put_delta = -0.15
                   for _, row in puts.iterrows():
                       if row['impliedVolatility'] <= 0: continue
                       d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=False)
                       diff = abs(abs(d) - 0.15)
-                      if diff < min_delta_diff:
-                          min_delta_diff = diff
+                      if diff < min_put_diff:
+                          min_put_diff = diff
                           best_put = row
+                          best_put_delta = d
 
                   if best_put is None: best_put = puts.iloc[0]
-
                   put15_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  norm_premium = put15_mark / close_price
+                  norm_put_premium = put15_mark / close_price
+
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
 
                   # --- 3. EXISTING LOGIC (Earnings Check) ---
@@ -280,10 +300,15 @@ jobs:
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
                       "earningsThisWeek": earnings_this_week,
-                      "put15DeltaPrice": round(put15_mark, 2),
-                      "put15DeltaStrike": float(best_put['strike']),
-                      "normPremium": round(norm_premium * 100, 3),
-                      "baseline": baseline_ticker
+                      "baseline": baseline_ticker,
+                      "call15Strike": float(best_call['strike']),
+                      "call15Price": round(call15_mark, 2),
+                      "call15Delta": round(best_call_delta, 2),
+                      "normCallPremium": round(norm_call_premium * 100, 3),
+                      "put15Strike": float(best_put['strike']),
+                      "put15Price": round(put15_mark, 2),
+                      "put15Delta": round(best_put_delta, 2),
+                      "normPutPremium": round(norm_put_premium * 100, 3)
                   }
               except Exception as e:
                   print(f"Error fetching individual data for {yf_symbol}: {e}")
