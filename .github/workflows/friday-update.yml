@@ -123,11 +123,12 @@ jobs:
           else:
               hv20 = None
 
-          # Coming week
-          mon = last_friday_dt + datetime.timedelta(days=3)
-          fri_next = last_friday_dt + datetime.timedelta(days=7)
+          # Coming week (Calculates next Mon-Fri safely from any day of the week)
+          days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
+          if last_trading_dt.weekday() == 0: days_to_mon = 7
+          mon = last_trading_dt + datetime.timedelta(days=days_to_mon)
+          fri_next = mon + datetime.timedelta(days=4)
           weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
-          print(f"weekof={weekof}")
 
           # Options helper - reused for SPX/NDX/QQQ
           def compute_options(yf_symbol, price, mon_dt):
