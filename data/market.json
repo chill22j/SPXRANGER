@@ -11,7 +11,7 @@
   "ndxStretch": 6.75,
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
-  "updated": "2026-06-21T16:28:17Z",
+  "updated": "2026-06-21T16:40:07Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -194,7 +194,7 @@
       "atmStrike": 1135.0,
       "straddleMove": 137.78,
       "atmIV": 139.86,
-      "earningsThisWeek": false
+      "earningsThisWeek": true
     },
     "NOW": {
       "close": 95.04,
@@ -203,7 +203,13 @@
       "atmIV": 62.26,
       "earningsThisWeek": false
     },
-    "CAT": null,
+    "CAT": {
+      "close": 985.82,
+      "atmStrike": 985.0,
+      "straddleMove": 38.34,
+      "atmIV": 48.5,
+      "earningsThisWeek": false
+    },
     "GS": {
       "close": 1096.56,
       "atmStrike": 1095.0,
@@ -211,6 +217,12 @@
       "atmIV": 39.95,
       "earningsThisWeek": false
     },
-    "NBIS": null
+    "NBIS": {
+      "close": 286.69,
+      "atmStrike": 287.5,
+      "straddleMove": 30.15,
+      "atmIV": 125.4,
+      "earningsThisWeek": false
+    }
   }
 }
