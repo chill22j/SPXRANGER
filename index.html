@@ -479,7 +479,7 @@
 
     // Update Title based on active tab
     const weekText = marketData ? marketData.weekof : '—';
-    const titleText = currentTicker === 'RANGES' ? 'Weekly Range Summary' : 'Options Pricing Model (OPM)';
+    const titleText = currentTicker === 'RANGES' ? 'Weekly Range Summary' : 'Options Pricing';
     document.getElementById('summaryTitle').innerHTML = `${titleText} — <span>${weekText}</span>`;
 
     if (!marketData) {
