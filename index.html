@@ -22,10 +22,20 @@
       border-top: 1px solid var(--border);
       font-size: 0.9em;
       color: var(--text-muted);
-    }
-    .val-expensive { background-color: rgba(239, 68, 68, 0.25) !important; color: #ef4444 !important; font-weight: bold; }
-    .val-elevated { background-color: rgba(249, 115, 22, 0.25) !important; color: #f97316 !important; font-weight: bold; }
-    .val-cheap { background-color: rgba(59, 130, 246, 0.25) !important; color: #3b82f6 !important; font-weight: bold; }
+  }
+  .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85em;
+      letter-spacing: 0.5px;
+  }
+
+  /* Main Table Cell Highlights */
+  .val-expensive { background-color: rgba(239, 68, 68, 0.25) !important; color: #ef4444 !important; font-weight: bold; }
+  .val-elevated { background-color: rgba(249, 115, 22, 0.25) !important; color: #f97316 !important; font-weight: bold; }
+  .val-cheap { background-color: rgba(59, 130, 246, 0.25) !important; color: #3b82f6 !important; font-weight: bold; }
+
   .earnings-badge {
     background-color: #ff9800;
     color: #111;
@@ -35,7 +45,7 @@
     margin-left: 8px;
     font-weight: 800;
     vertical-align: middle;
-}
+  }
   :root {
     --bg:      #0a0a0f;
     --surface: #111118;
@@ -165,7 +175,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.3</span></div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.4</span></div>
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
@@ -204,16 +214,14 @@
           <th>PREV CLOSE</th>
           <th class="th-low">PRED LOW</th>
           <th class="th-high">PRED HIGH</th>
-          <th>PUT STRIKE</th>
-          <th>PUT DELTA</th>
-          <th>PUT PRICE</th>
-          <th>CALL STRIKE</th>
-          <th>CALL DELTA</th>
-          <th>CALL PRICE</th>
+          <th>P STRIKE</th>
+          <th>P DELTA</th>
+          <th>P PRICE</th>
+          <th>C STRIKE</th>
+          <th>C DELTA</th>
+          <th>C PRICE</th>
         </tr>
       </thead>
-      <tbody id="summaryBody"></tbody>
-    </table>
       <tbody id="summaryBody"></tbody>
     </table>
     <div class="summary-status" id="summaryStatus"></div>
@@ -231,7 +239,7 @@
     <div class="fetch-btn"><span>📅 Loaded from Saturday auto-update</span></div>
     <div class="fetch-status" id="fetchStatus"></div>
     <button class="calc-btn" onclick="calculate()">Calculate <span id="calcTickerLabel">SPX</span> Weekly Range</button>
-    <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
+    <button class="save-btn" id="saveBtn" style="display:none" onclick="saveToHistory()">+ Save to History</button>
   </div>
 
   <div class="card" id="regimeCard" style="display:none">
@@ -398,8 +406,8 @@
 
   // ======= State =======
   let currentTicker = 'SUMMARY';
-  let marketData = null;     // raw market.json
-  let lastResult = null;     // most recent prediction for currentTicker
+  let marketData = null;     
+  let lastResult = null;     
   let history = {
     SPX: JSON.parse(localStorage.getItem('pvi_history_SPX') || '[]'),
     NDX: JSON.parse(localStorage.getItem('pvi_history_NDX') || '[]'),
@@ -409,7 +417,6 @@
   // ======= Data load =======
   async function loadLatestData() {
     const status = document.getElementById('fetchStatus');
-    // Show waiting placeholder in summary view immediately
     if (currentTicker === 'SUMMARY') renderSummary();
     try {
       const res = await fetch('data/market.json?_=' + Date.now());
@@ -420,23 +427,20 @@
         : (marketData.date || '');
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded as of ' + updated;
-      // Dispatch to whichever view is active
       if (currentTicker === 'SUMMARY') renderSummary();
       else renderTicker();
     } catch (e) {
       status.className = 'fetch-status err';
       status.textContent = 'Could not load market data. Enter manually below.';
-      // Show error in summary view too
       if (currentTicker === 'SUMMARY') {
         const body = document.getElementById('summaryBody');
-        body.innerHTML = '<tr><td colspan="4" class="empty-cell">Could not load market data.</td></tr>';
+        body.innerHTML = '<tr><td colspan="10" class="empty-cell">Could not load market data.</td></tr>';
       }
     }
   }
 
   // ======= Ticker switching =======
   function switchTicker(ticker) {
-    // SUMMARY is a special view, not in TICKER_CONFIG
     if (ticker !== 'SUMMARY' && !TICKER_CONFIG[ticker]) return;
     currentTicker = ticker;
     document.querySelectorAll('.tab-btn').forEach(b => {
@@ -444,7 +448,6 @@
     });
 
     if (ticker === 'SUMMARY') {
-      // Show summary view, hide single-ticker view
       document.getElementById('summaryView').style.display = 'block';
       document.getElementById('tickerView').style.display = 'none';
       lastResult = null;
@@ -452,10 +455,8 @@
       return;
     }
 
-    // Single-ticker mode
     document.getElementById('summaryView').style.display = 'none';
     document.getElementById('tickerView').style.display = 'block';
-    // Hide result/regime/options cards on switch — user re-runs Calculate
     document.getElementById('regimeCard').style.display = 'none';
     document.getElementById('resultCard').style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
@@ -506,7 +507,7 @@
       if (marketData.individuals && marketData.individuals[ticker]) {
         const stockData = marketData.individuals[ticker];
         
-        if (stockData.normCallPremium && stockData.normPutPremium) {
+        if (stockData.call15Price && stockData.put15Price) {
             cStrike = stockData.call15Strike;
             cPrice = stockData.call15Price.toFixed(2);
             cDelta = stockData.call15Delta.toFixed(2);
@@ -515,7 +516,6 @@
             pPrice = stockData.put15Price.toFixed(2);
             pDelta = stockData.put15Delta.toFixed(2);
 
-            // True relative valuation against actual ETF option premiums
             const isBaseIndex = ['SPX', 'NDX', 'SPY', 'QQQ'].includes(ticker);
             const baselineTicker = stockData.baseline; 
             const baseData = marketData.individuals[baselineTicker];
@@ -567,10 +567,9 @@
       : (marketData.date || '');
     status.textContent = '✓ Auto-loaded as of ' + updated + ' • Tap a ticker tab above for full details.';
   }
-  
+
   function renderTicker() {
     const cfg = TICKER_CONFIG[currentTicker];
-    // Update labels
     document.getElementById('closeLabel').textContent = cfg.label + ' Close';
     document.getElementById('volLabel').textContent = cfg.volLabel + ' Close';
     document.getElementById('calcTickerLabel').textContent = cfg.label;
@@ -578,8 +577,7 @@
     document.getElementById('resultTickerLow').textContent = cfg.label;
     document.getElementById('resultTickerHigh').textContent = cfg.label;
     document.getElementById('historyTicker').textContent = cfg.label;
-    // Populate inputs from market data
-    // Populate inputs from market data
+
     if (marketData) {
       let close, vol, stretch;
       if (cfg.isIndividual && marketData.individuals && marketData.individuals[currentTicker]) {
@@ -600,9 +598,7 @@
       else document.getElementById('stretch').value = '';
       if (marketData.weekof) document.getElementById('weekof').value = marketData.weekof;
     }
-    // Render options for this ticker (auto-display if data present)
     renderOptionsForCurrentTicker();
-    // Render history
     renderHistory();
   }
 
@@ -635,13 +631,9 @@
     };
   }
 
-// ======= Dynamic Volatility K-Factor =======
   function getVolMultiplier(iv) {
-    const threshold = 20.0; // Normal VXN baseline
-    if (iv > threshold) {
-      // Scales dynamically: VXN 30.47 = ~1.19x multiplier
-      return 1 + ((iv - threshold) * 0.0181);
-    }
+    const threshold = 20.0; 
+    if (iv > threshold) return 1 + ((iv - threshold) * 0.0181);
     return 1.0; 
   }
 
@@ -662,7 +654,6 @@
       }
     }
 
-    // Apply Sub-linear Volatility Scaling
     let volMult = getVolMultiplier(vol);
     kLow *= volMult;
     kHigh *= volMult;
@@ -683,7 +674,6 @@
   }
 
   function predictQQQ(qqqClose) {
-    // Need NDX prediction first; pull NDX inputs from market data
     if (!marketData) return null;
     const ndxClose = marketData.ndx;
     const ndxVol = marketData.vxn;
@@ -703,7 +693,6 @@
   }
 
   function predictSPY(spyClose) {
-    // Need SPX prediction first; pull SPX inputs from market data
     if (!marketData) return null;
     const spxClose = marketData.spx;
     const spxVol = marketData.vix;
@@ -726,49 +715,42 @@
   function predictDynamicRange(close, ticker, vol) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
     
-    // 1. Calculate Volatility Method (1SD Baseline)
     const wv = (vol / 100) * Math.sqrt(5 / 252);
     const volMove = close * wv; 
     
-    // 2. Calculate Options Straddle Method (1SD Baseline)
     const straddleMove = data ? data.straddleMove : 0; 
     
-    // 3. The Baseline Decision: Choose the wider metric
     const isOptionsWider = straddleMove > volMove;
     const baseMove = isOptionsWider ? straddleMove : volMove;
     const winningRegime = isOptionsWider ? 'Options' : 'Volatility';
 
-    // 4. The Extreme Expansion
     const kFactor = 2.0;
     const expandedMove = baseMove * kFactor;
 
-    // 5. 15-Delta Relative Valuation (NEW)
+    // 5. Absolute Dollar Relative Valuation (For Individual View Card)
     let valuationHtml = '';
-    if (data && data.normPremium) {
-        const isNasdaq = data.baseline === 'QQQ';
-        const baseIV = isNasdaq ? marketData.vxn : marketData.vix;
+    if (data && data.call15Price && data.put15Price) {
+        const isBaseIndex = ['SPX', 'NDX', 'SPY', 'QQQ'].includes(ticker);
+        const baselineTicker = data.baseline;
+        const baseData = marketData.individuals[baselineTicker];
         
-        const indexPremiumRaw = (baseIV / 100) * 0.14; 
-        const stockPremiumRaw = data.normPremium / 100;
-        const premiumRatio = stockPremiumRaw / indexPremiumRaw;
-        
-        let badgeClass = "badge-fair";
-        
-        let badgeClass = "badge-fair";
-        
-        // Trigger Red for 200%+, Orange for 150%+, or Blue for 50%-
-        if (premiumRatio >= 2.0) {
-            badgeClass = "badge-expensive";
-        } else if (premiumRatio >= 1.5) {
-            badgeClass = "badge-elevated";
-        } else if (premiumRatio <= 0.5) {
-            badgeClass = "badge-cheap";
+        if (!isBaseIndex && baseData && baseData.put15Price) {
+            const putRatio = data.put15Price / baseData.put15Price;
+            
+            let badgeClass = "badge-fair";
+            if (putRatio >= 2.0) {
+                badgeClass = "badge-expensive";
+            } else if (putRatio >= 1.5) {
+                badgeClass = "badge-elevated";
+            } else if (putRatio <= 0.5) {
+                badgeClass = "badge-cheap";
+            }
+            
+            valuationHtml = `<div class="valuation-container">
+              <span>15Δ Put Relative Value:</span>
+              <span class="badge ${badgeClass}">${Math.round(putRatio * 100)}% of ${baselineTicker}</span>
+            </div>`;
         }
-        
-        valuationHtml = `<div class="valuation-container">
-          <span>15Δ Relative Value:</span>
-          <span class="badge ${badgeClass}">${Math.round(premiumRatio * 100)}% of ${data.baseline}</span>
-        </div>`;
     }
 
     return {
@@ -782,6 +764,7 @@
       stretchNote: valuationHtml
     };
   }
+
   function calculate() {
     const cfg = TICKER_CONFIG[currentTicker];
     const close = parseFloat(document.getElementById('close').value);
@@ -803,7 +786,6 @@
     const mid = Math.round((result.low + result.high) / 2);
     const width = result.high - result.low;
 
-    // Render regime card
     document.getElementById('regimeCard').style.display = 'block';
     
     let regimeText = '';
@@ -819,7 +801,6 @@
     document.getElementById('lowMult').textContent = (1 - result.kLow * result.wv).toFixed(4);
     document.getElementById('highMult').textContent = (1 + result.kHigh * result.wv).toFixed(4);
 
-    // Render result card
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('resultWeek').textContent = weekof;
     document.getElementById('resLow').textContent = result.low.toLocaleString();
@@ -832,7 +813,6 @@
     document.getElementById('saveBtn').style.display = 'block';
 
     lastResult = { ticker: currentTicker, close, vol, stretch, low: result.low, high: result.high, weekof, regime: result.regime };
-    // Re-render options now that we have a predicted Low for comparison
     renderOptionsForCurrentTicker();
   }
 
@@ -915,8 +895,8 @@
     ).join('');
   }
 
-  // ======= Init =======
-  loadLatestData();
+  // ======= Init =======
+  loadLatestData();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
 </script>
