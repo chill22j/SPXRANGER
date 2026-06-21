@@ -11,7 +11,7 @@
   "ndxStretch": 6.75,
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
-  "updated": "2026-06-21T16:40:07Z",
+  "updated": "2026-06-21T20:04:56Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -117,112 +117,176 @@
       "atmStrike": 210.0,
       "straddleMove": 7.16,
       "atmIV": 40.36,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 1.02,
+      "put15DeltaStrike": 200.0,
+      "normPremium": 0.484,
+      "baseline": "QQQ"
     },
     "TSLA": {
       "close": 400.49,
       "atmStrike": 400.0,
       "straddleMove": 15.77,
       "atmIV": 45.67,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 2.46,
+      "put15DeltaStrike": 380.0,
+      "normPremium": 0.615,
+      "baseline": "QQQ"
     },
     "AAPL": {
       "close": 298.01,
       "atmStrike": 297.5,
       "straddleMove": 6.59,
       "atmIV": 26.89,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 1.19,
+      "put15DeltaStrike": 290.0,
+      "normPremium": 0.398,
+      "baseline": "QQQ"
     },
     "XOM": {
       "close": 137.81,
       "atmStrike": 138.0,
       "straddleMove": 4.0,
       "atmIV": 36.93,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 0.6,
+      "put15DeltaStrike": 132.0,
+      "normPremium": 0.435,
+      "baseline": "SPY"
     },
     "AMZN": {
       "close": 244.39,
       "atmStrike": 245.0,
       "straddleMove": 7.4,
       "atmIV": 35.7,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 1.25,
+      "put15DeltaStrike": 235.0,
+      "normPremium": 0.509,
+      "baseline": "QQQ"
     },
     "GOOG": {
       "close": 367.46,
       "atmStrike": 367.5,
       "straddleMove": 10.65,
       "atmIV": 34.72,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 1.48,
+      "put15DeltaStrike": 352.5,
+      "normPremium": 0.404,
+      "baseline": "QQQ"
     },
     "MSFT": {
       "close": 379.4,
       "atmStrike": 380.0,
       "straddleMove": 11.22,
       "atmIV": 35.38,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 1.77,
+      "put15DeltaStrike": 365.0,
+      "normPremium": 0.468,
+      "baseline": "QQQ"
     },
     "META": {
       "close": 577.22,
       "atmStrike": 577.5,
       "straddleMove": 18.85,
       "atmIV": 39.2,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 2.86,
+      "put15DeltaStrike": 552.5,
+      "normPremium": 0.495,
+      "baseline": "QQQ"
     },
     "NFLX": {
       "close": 77.38,
       "atmStrike": 77.0,
       "straddleMove": 2.21,
       "atmIV": 33.72,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 0.45,
+      "put15DeltaStrike": 75.0,
+      "normPremium": 0.588,
+      "baseline": "QQQ"
     },
     "AMD": {
       "close": 537.37,
       "atmStrike": 537.5,
       "straddleMove": 37.4,
       "atmIV": 80.06,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 6.25,
+      "put15DeltaStrike": 492.5,
+      "normPremium": 1.163,
+      "baseline": "QQQ"
     },
     "DELL": {
       "close": 409.5,
       "atmStrike": 410.0,
       "straddleMove": 30.52,
       "atmIV": 85.68,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 5.33,
+      "put15DeltaStrike": 372.5,
+      "normPremium": 1.3,
+      "baseline": "QQQ"
     },
     "MU": {
       "close": 1133.99,
       "atmStrike": 1135.0,
       "straddleMove": 137.78,
       "atmIV": 139.86,
-      "earningsThisWeek": true
+      "earningsThisWeek": true,
+      "put15DeltaPrice": 23.92,
+      "put15DeltaStrike": 980.0,
+      "normPremium": 2.11,
+      "baseline": "QQQ"
     },
     "NOW": {
       "close": 95.04,
       "atmStrike": 95.0,
       "straddleMove": 5.14,
       "atmIV": 62.26,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 0.8,
+      "put15DeltaStrike": 89.0,
+      "normPremium": 0.842,
+      "baseline": "QQQ"
     },
     "CAT": {
       "close": 985.82,
       "atmStrike": 985.0,
-      "straddleMove": 38.34,
-      "atmIV": 48.5,
-      "earningsThisWeek": false
+      "straddleMove": 35.87,
+      "atmIV": 47.77,
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 5.32,
+      "put15DeltaStrike": 940.0,
+      "normPremium": 0.54,
+      "baseline": "SPY"
     },
     "GS": {
       "close": 1096.56,
       "atmStrike": 1095.0,
       "straddleMove": 33.43,
       "atmIV": 39.95,
-      "earningsThisWeek": false
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 4.78,
+      "put15DeltaStrike": 1052.5,
+      "normPremium": 0.435,
+      "baseline": "SPY"
     },
     "NBIS": {
       "close": 286.69,
       "atmStrike": 287.5,
-      "straddleMove": 30.15,
-      "atmIV": 125.4,
-      "earningsThisWeek": false
+      "straddleMove": 31.28,
+      "atmIV": 125.42,
+      "earningsThisWeek": false,
+      "put15DeltaPrice": 6.15,
+      "put15DeltaStrike": 250.0,
+      "normPremium": 2.145,
+      "baseline": "QQQ"
     }
   }
 }
