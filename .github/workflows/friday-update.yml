@@ -1,4 +1,4 @@
-name: Friday Market Update
+name: Daily Market Update
 
 on:
   schedule:
@@ -18,9 +18,23 @@ jobs:
           pip install yfinance lxml --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
-          import urllib.request, json, math, datetime, time
+          import urllib.request, json, math, datetime, time, os
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+          # 1. Check if it's the weekend run (Saturday = 5)
+          today_weekday = datetime.datetime.utcnow().weekday()
+          is_weekend_run = today_weekday >= 5
+          
+          # 2. Load Frozen Ranges if it's a weekday
+          frozen_data = None
+          if not is_weekend_run and os.path.exists("data/market.json"):
+              try:
+                  with open("data/market.json", "r") as f:
+                      frozen_data = json.load(f)
+                      print("Loaded frozen ranges from weekend run.")
+              except Exception as e:
+                  print("No frozen data found, fallback to live ranges:", e)
 
           def fetch_chart(symbol, period="3mo"):
               url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
@@ -30,11 +44,10 @@ jobs:
                       with urllib.request.urlopen(req, timeout=10) as r:
                           return json.loads(r.read())
                   except Exception as e:
-                      print(f"Fetch {symbol} failed ({e}), retrying in 3s...")
                       time.sleep(3)
-              raise Exception(f"Completely failed to fetch {symbol} after 5 attempts.")
+              raise Exception(f"Failed to fetch {symbol}")
 
-          # Fetch SPX (3mo for MA50) and VIX
+          # Fetch Baseline Charts (Always needed for date math)
           spx_data = fetch_chart("%5EGSPC", "3mo")
           vix_data = fetch_chart("%5EVIX", "3mo")
           ndx_data = fetch_chart("%5ENDX", "3mo")
@@ -43,7 +56,6 @@ jobs:
 
           spx_result = spx_data["chart"]["result"][0]
           vix_result = vix_data["chart"]["result"][0]
-
           spx_timestamps = spx_result["timestamp"]
           spx_closes     = spx_result["indicators"]["quote"][0]["close"]
           vix_closes     = vix_result["indicators"]["quote"][0]["close"]
@@ -59,7 +71,6 @@ jobs:
           qqq_timestamps = qqq_result["timestamp"]
           qqq_closes     = qqq_result["indicators"]["quote"][0]["close"]
 
-          # Find the most recent valid trading day
           last_trading_idx = len(spx_timestamps) - 1
           while last_trading_idx >= 0 and not spx_closes[last_trading_idx]:
               last_trading_idx -= 1
@@ -67,270 +78,236 @@ jobs:
           last_trading_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[last_trading_idx])
           last_friday_idx = last_trading_idx
           last_friday_dt = last_trading_dt
-
-          spx = round(spx_closes[last_friday_idx], 2)
-
-          # Find VIX close for same Friday
-          last_friday_vix = None
+          
           target_date = last_friday_dt.strftime("%Y-%m-%d")
-          for i in range(len(vix_timestamps)-1, -1, -1):
-              dt = datetime.datetime.utcfromtimestamp(vix_timestamps[i])
-              if dt.strftime("%Y-%m-%d") == target_date and vix_closes[i]:
-                  last_friday_vix = vix_closes[i]
-                  break
-          if not last_friday_vix:
-              last_friday_vix = vix_closes[-1]
-          vix = round(last_friday_vix, 2)
 
-          date_str = last_friday_dt.strftime("%Y-%m-%d")
-          print(f"Friday: {date_str}  SPX={spx}  VIX={vix}")
-
-          # 50-day MA at last_friday_idx
-          ma50 = None
-          stretch_pct = None
-          if last_friday_idx >= 49:
-              valid_50 = [c for c in spx_closes[last_friday_idx-49:last_friday_idx+1] if c]
-              if len(valid_50) >= 40:
-                  ma50 = round(sum(valid_50) / len(valid_50), 2)
-                  stretch_pct = round(((spx - ma50) / ma50) * 100, 2)
-
-          # Find NDX/VXN/QQQ closes for same Friday
-          def find_close_for_date(ts_list, c_list, td):
-              for i in range(len(ts_list)-1, -1, -1):
-                  dt = datetime.datetime.utcfromtimestamp(ts_list[i])
-                  if dt.strftime("%Y-%m-%d") == td and c_list[i]:
-                      return c_list[i], i
-              return None, None
-
-          ndx_val, ndx_idx = find_close_for_date(ndx_timestamps, ndx_closes, target_date)
-          vxn_val, _       = find_close_for_date(vxn_timestamps, vxn_closes, target_date)
-          qqq_val, _       = find_close_for_date(qqq_timestamps, qqq_closes, target_date)
-          ndx = round(ndx_val, 2) if ndx_val else None
-          vxn = round(vxn_val, 2) if vxn_val else None
-          qqq = round(qqq_val, 2) if qqq_val else None
-
-          # NDX 50-day MA
-          ndx_ma50 = None
-          ndx_stretch_pct = None
-          if ndx_idx is not None and ndx_idx >= 49:
-              valid_50_ndx = [c for c in ndx_closes[ndx_idx-49:ndx_idx+1] if c]
-              if len(valid_50_ndx) >= 40 and ndx is not None:
-                  ndx_ma50 = round(sum(valid_50_ndx) / len(valid_50_ndx), 2)
-                  ndx_stretch_pct = round(((ndx - ndx_ma50) / ndx_ma50) * 100, 2)
-
-          # HV20
-          valid_closes = [c for c in spx_closes if c]
-          log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1,len(valid_closes))]
-          if len(log_rets) >= 2:
-              mean = sum(log_rets)/len(log_rets)
-              var = sum((r-mean)**2 for r in log_rets)/(len(log_rets)-1)
-              hv20 = round(math.sqrt(var)*math.sqrt(252)*100, 2)
-          else:
-              hv20 = None
-
+          # Set up week math
           days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
           if last_trading_dt.weekday() == 0: days_to_mon = 7
           mon = last_trading_dt + datetime.timedelta(days=days_to_mon)
           fri_next = mon + datetime.timedelta(days=4)
-          weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
+          live_weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
+          live_date_str = last_friday_dt.strftime("%Y-%m-%d")
 
-          def compute_options(yf_symbol, price, mon_dt):
-              max_pain = None
-              top_puts = []
-              top_calls = []
-              options_expiry = None
-              try:
-                  t = yf.Ticker(yf_symbol)
-                  expirations = list(t.options)
-                  target_exp = None
-                  for exp in expirations:
-                      exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
-                      days_from_mon = (exp_date - mon_dt.date()).days
-                      if 0 <= days_from_mon <= 4:
-                          target_exp = exp
-                  if not target_exp and expirations:
-                      target_exp = expirations[0]
-                  exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
-                  options_expiry = f"{exp_dt.month}/{exp_dt.day}"
-                  chain = t.option_chain(target_exp)
-                  calls_df = chain.calls
-                  puts_df  = chain.puts
-                  lo, hi = price * 0.85, price * 1.15
-                  calls_df = calls_df[(calls_df["strike"] >= lo) & (calls_df["strike"] <= hi) & (calls_df["openInterest"] > 0)]
-                  puts_df  = puts_df[(puts_df["strike"] >= lo) & (puts_df["strike"] <= hi) & (puts_df["openInterest"] > 0)]
-                  call_oi = dict(zip(calls_df["strike"].tolist(), calls_df["openInterest"].tolist()))
-                  put_oi  = dict(zip(puts_df["strike"].tolist(),  puts_df["openInterest"].tolist()))
-                  all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
-                  if all_strikes:
-                      min_pain = float("inf")
-                      for s in all_strikes:
-                          cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
-                          pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
-                          if cp+pp < min_pain:
-                              min_pain = cp+pp
-                              max_pain = int(s)
-                      top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
-                      top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
-              except Exception as e:
-                  pass
-              return max_pain, top_puts, top_calls, options_expiry
-
-          max_pain, top_puts, top_calls, options_expiry = compute_options("^SPX", spx, mon)
-          ndx_max_pain = ndx_top_puts = ndx_top_calls = ndx_options_expiry = None
-          qqq_max_pain = qqq_top_puts = qqq_top_calls = qqq_options_expiry = None
+          # --- 3. DTE-Based Rolling Delta Calculation ---
+          today_date = datetime.datetime.utcnow().date()
+          global_dte = (fri_next.date() - today_date).days
           
-          if ndx is not None:
-              ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
-          if qqq is not None:
-              qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
+          if global_dte >= 4: global_target_delta = 0.10
+          elif global_dte == 3: global_target_delta = 0.15
+          elif global_dte == 2: global_target_delta = 0.20
+          elif global_dte == 1: global_target_delta = 0.25
+          else: global_target_delta = 0.30
 
-          # ======= Individual Tickers (Options & Volatility Methods) =======
+          # --- 4. FREEZE OR CALCULATE GLOBAL RANGES ---
+          if frozen_data and "spx" in frozen_data:
+              spx = frozen_data.get("spx")
+              vix = frozen_data.get("vix")
+              ndx = frozen_data.get("ndx")
+              vxn = frozen_data.get("vxn")
+              qqq = frozen_data.get("qqq")
+              hv20 = frozen_data.get("hv20")
+              ma50 = frozen_data.get("ma50")
+              stretch_pct = frozen_data.get("stretch")
+              ndx_ma50 = frozen_data.get("ndxMa50")
+              ndx_stretch_pct = frozen_data.get("ndxStretch")
+              weekof = frozen_data.get("weekof", live_weekof)
+              date_str = frozen_data.get("date", live_date_str)
+              
+              max_pain = frozen_data.get("options", {}).get("maxPain")
+              top_puts = frozen_data.get("options", {}).get("topPuts", [])
+              top_calls = frozen_data.get("options", {}).get("topCalls", [])
+              options_expiry = frozen_data.get("options", {}).get("expiry")
+              
+              ndx_max_pain = frozen_data.get("ndxOptions", {}).get("maxPain")
+              ndx_top_puts = frozen_data.get("ndxOptions", {}).get("topPuts", [])
+              ndx_top_calls = frozen_data.get("ndxOptions", {}).get("topCalls", [])
+              ndx_options_expiry = frozen_data.get("ndxOptions", {}).get("expiry")
+              
+              qqq_max_pain = frozen_data.get("qqqOptions", {}).get("maxPain")
+              qqq_top_puts = frozen_data.get("qqqOptions", {}).get("topPuts", [])
+              qqq_top_calls = frozen_data.get("qqqOptions", {}).get("topCalls", [])
+              qqq_options_expiry = frozen_data.get("qqqOptions", {}).get("expiry")
+          else:
+              # Calculate Live
+              spx = round(spx_closes[last_friday_idx], 2)
+              last_friday_vix = vix_closes[-1]
+              for i in range(len(vix_timestamps)-1, -1, -1):
+                  dt = datetime.datetime.utcfromtimestamp(vix_timestamps[i])
+                  if dt.strftime("%Y-%m-%d") == target_date and vix_closes[i]:
+                      last_friday_vix = vix_closes[i]; break
+              vix = round(last_friday_vix, 2)
+
+              ma50 = stretch_pct = None
+              if last_friday_idx >= 49:
+                  valid_50 = [c for c in spx_closes[last_friday_idx-49:last_friday_idx+1] if c]
+                  if len(valid_50) >= 40:
+                      ma50 = round(sum(valid_50) / len(valid_50), 2)
+                      stretch_pct = round(((spx - ma50) / ma50) * 100, 2)
+
+              def find_close(ts_list, c_list, td):
+                  for i in range(len(ts_list)-1, -1, -1):
+                      dt = datetime.datetime.utcfromtimestamp(ts_list[i])
+                      if dt.strftime("%Y-%m-%d") == td and c_list[i]: return c_list[i], i
+                  return None, None
+
+              ndx_val, ndx_idx = find_close(ndx_timestamps, ndx_closes, target_date)
+              vxn_val, _       = find_close(vxn_timestamps, vxn_closes, target_date)
+              qqq_val, _       = find_close(qqq_timestamps, qqq_closes, target_date)
+              ndx = round(ndx_val, 2) if ndx_val else None
+              vxn = round(vxn_val, 2) if vxn_val else None
+              qqq = round(qqq_val, 2) if qqq_val else None
+
+              ndx_ma50 = ndx_stretch_pct = None
+              if ndx_idx is not None and ndx_idx >= 49:
+                  valid_50_ndx = [c for c in ndx_closes[ndx_idx-49:ndx_idx+1] if c]
+                  if len(valid_50_ndx) >= 40 and ndx is not None:
+                      ndx_ma50 = round(sum(valid_50_ndx) / len(valid_50_ndx), 2)
+                      ndx_stretch_pct = round(((ndx - ndx_ma50) / ndx_ma50) * 100, 2)
+
+              valid_closes = [c for c in spx_closes if c]
+              log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1,len(valid_closes))]
+              hv20 = round(math.sqrt(sum((r-(sum(log_rets)/len(log_rets)))**2 for r in log_rets)/(len(log_rets)-1))*math.sqrt(252)*100, 2) if len(log_rets) >= 2 else None
+              weekof, date_str = live_weekof, live_date_str
+
+              def compute_options(yf_symbol, price, mon_dt):
+                  max_pain, top_puts, top_calls, options_expiry = None, [], [], None
+                  try:
+                      t = yf.Ticker(yf_symbol)
+                      expirations = list(t.options)
+                      target_exp = expirations[0] if expirations else None
+                      for exp in expirations:
+                          if 0 <= (datetime.datetime.strptime(exp, "%Y-%m-%d").date() - mon_dt.date()).days <= 4:
+                              target_exp = exp
+                      if target_exp:
+                          options_expiry = f"{datetime.datetime.strptime(target_exp, '%Y-%m-%d').month}/{datetime.datetime.strptime(target_exp, '%Y-%m-%d').day}"
+                          chain = t.option_chain(target_exp)
+                          calls_df = chain.calls[(chain.calls["strike"] >= price*0.85) & (chain.calls["strike"] <= price*1.15) & (chain.calls["openInterest"] > 0)]
+                          puts_df = chain.puts[(chain.puts["strike"] >= price*0.85) & (chain.puts["strike"] <= price*1.15) & (chain.puts["openInterest"] > 0)]
+                          call_oi = dict(zip(calls_df["strike"], calls_df["openInterest"]))
+                          put_oi = dict(zip(puts_df["strike"], puts_df["openInterest"]))
+                          all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
+                          if all_strikes:
+                              min_pain = float("inf")
+                              for s in all_strikes:
+                                  cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
+                                  pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
+                                  if cp+pp < min_pain:
+                                      min_pain = cp+pp
+                                      max_pain = int(s)
+                              top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
+                              top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
+                  except Exception: pass
+                  return max_pain, top_puts, top_calls, options_expiry
+
+              max_pain, top_puts, top_calls, options_expiry = compute_options("^SPX", spx, mon)
+              ndx_max_pain = ndx_top_puts = ndx_top_calls = ndx_options_expiry = None
+              qqq_max_pain = qqq_top_puts = qqq_top_calls = qqq_options_expiry = None
+              if ndx is not None: ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
+              if qqq is not None: qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
+
           def cdf_normal(x):
               return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
 
           def compute_delta(spot, strike, iv_pct, days_to_exp, is_call=True):
-              if iv_pct <= 0 or days_to_exp <= 0 or spot <= 0 or strike <= 0:
-                  return 0.5
+              if iv_pct <= 0 or days_to_exp <= 0 or spot <= 0 or strike <= 0: return 0.5
               t = days_to_exp / 365.0
               sigma = iv_pct / 100.0
               d1 = (math.log(spot / strike) + (0.5 * sigma ** 2) * t) / (sigma * math.sqrt(t))
-              delta = cdf_normal(d1)
-              return delta if is_call else (delta - 1.0)
+              return cdf_normal(d1) if is_call else (cdf_normal(d1) - 1.0)
 
-          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines):
+          # --- 5. INDIVIDUAL TICKERS (Ranges = Frozen, OPM = Live) ---
+          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
                   hist = t.history(period="1mo")
                   if hist.empty: return None
-                  
-                  hist['date_only'] = hist.index.date
-                  valid_hist = hist[hist['date_only'] < mon_dt.date()]
-                  
-                  if valid_hist.empty: return None
-                  close_price = round(valid_hist["Close"].iloc[-1], 2)
+                  live_close = round(hist["Close"].iloc[-1], 2)
 
                   expirations = list(t.options)
-                  target_exp = None
+                  target_exp = expirations[0] if expirations else None
                   for exp in expirations:
-                      exp_date = datetime.datetime.strptime(exp, "%Y-%m-%d").date()
-                      days_from_mon = (exp_date - mon_dt.date()).days
-                      if 0 <= days_from_mon <= 4:
+                      if 0 <= (datetime.datetime.strptime(exp, "%Y-%m-%d").date() - mon_dt.date()).days <= 4:
                           target_exp = exp
-                  if not target_exp and expirations:
-                      target_exp = expirations[0]
 
                   exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
-                  days_to_exp = max((exp_dt.date() - mon_dt.date()).days, 1)
+                  days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
 
                   chain = t.option_chain(target_exp)
-                  calls = chain.calls
-                  puts = chain.puts
-                  
+                  calls, puts = chain.calls, chain.puts
                   if calls.empty or puts.empty: return None
-
-                  # --- 1. EXISTING LOGIC (ATM Straddle & Volatility) ---
-                  calls['dist'] = abs(calls['strike'] - close_price)
-                  atm_call = calls.loc[calls['dist'].idxmin()]
-
-                  puts['dist'] = abs(puts['strike'] - close_price)
-                  atm_put = puts.loc[puts['dist'].idxmin()]
-
-                  atm_strike = float(atm_call['strike'])
-
-                  call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
-                  put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
-
-                  straddle_move = round((call_mark + put_mark) * 0.85, 2)
-                  atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
-
-                  # --- 2. NEW LOGIC (DTE-Based Rolling Delta) ---
-                  # 4+ Days = 10Δ, 3 Days = 15Δ, 2 Days = 20Δ, 1 Day = 25Δ, 0 Days = 30Δ
-                  today_date = datetime.datetime.utcnow().date()
-                  dte = (exp_dt.date() - today_date).days
-                  
-                  if dte >= 4:
-                      target_delta = 0.10
-                  elif dte == 3:
-                      target_delta = 0.15
-                  elif dte == 2:
-                      target_delta = 0.20
-                  elif dte == 1:
-                      target_delta = 0.25
-                  else:
-                      target_delta = 0.30
-
-                  # Find Target Delta Call
-                  best_call = None
-                  min_call_diff = float('inf')
-                  best_call_delta = target_delta
-                  for _, row in calls.iterrows():
-                      if row['impliedVolatility'] <= 0: continue
-                      d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=True)
-                      diff = abs(d - target_delta)
-                      if diff < min_call_diff:
-                          min_call_diff = diff
-                          best_call = row
-                          best_call_delta = d
-
-                  if best_call is None: best_call = calls.iloc[0]
-                  call15_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
-                  norm_call_premium = call15_mark / close_price
-
-                  # Find Target Delta Put
-                  best_put = None
-                  min_put_diff = float('inf')
-                  best_put_delta = -target_delta
-                  for _, row in puts.iterrows():
-                      if row['impliedVolatility'] <= 0: continue
-                      d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=False)
-                      diff = abs(abs(d) - target_delta)
-                      if diff < min_put_diff:
-                          min_put_diff = diff
-                          best_put = row
-                          best_put_delta = d
-
-                  if best_put is None: best_put = puts.iloc[0]
-                  put15_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  norm_put_premium = put15_mark / close_price
 
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
 
-                  # --- 3. EXISTING LOGIC (Earnings Check) ---
-                  earnings_this_week = False
-                  try:
-                      earnings_df = t.get_earnings_dates(limit=5)
-                      if earnings_df is not None and not earnings_df.empty:
-                          fri_dt = mon_dt + datetime.timedelta(days=4)
-                          for edate in earnings_df.index:
-                              naive_date = edate.to_pydatetime().replace(tzinfo=None)
-                              if mon_dt.date() <= naive_date.date() <= fri_dt.date():
-                                  earnings_this_week = True
-                                  break
-                  except Exception:
-                      pass 
+                  # A. FREEZE RANGE DATA
+                  if frozen_stock_data:
+                      range_close = frozen_stock_data.get("close", live_close)
+                      atm_strike = frozen_stock_data.get("atmStrike")
+                      straddle_move = frozen_stock_data.get("straddleMove")
+                      atm_iv = frozen_stock_data.get("atmIV")
+                      earnings_this_week = frozen_stock_data.get("earningsThisWeek", False)
+                  else:
+                      range_close = live_close
+                      calls['dist'] = abs(calls['strike'] - range_close)
+                      atm_call = calls.loc[calls['dist'].idxmin()]
+                      puts['dist'] = abs(puts['strike'] - range_close)
+                      atm_put = puts.loc[puts['dist'].idxmin()]
+                      atm_strike = float(atm_call['strike'])
+                      call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
+                      put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
+                      straddle_move = round((call_mark + put_mark) * 0.85, 2)
+                      atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
+                      
+                      earnings_this_week = False
+                      try:
+                          earnings_df = t.get_earnings_dates(limit=5)
+                          if earnings_df is not None and not earnings_df.empty:
+                              fri_dt = mon_dt + datetime.timedelta(days=4)
+                              for edate in earnings_df.index:
+                                  if mon_dt.date() <= edate.to_pydatetime().replace(tzinfo=None).date() <= fri_dt.date():
+                                      earnings_this_week = True; break
+                      except Exception: pass
+
+                  # B. CALCULATE LIVE OPM (Always uses live data & rolling delta)
+                  best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
+                  for _, row in calls.iterrows():
+                      if row['impliedVolatility'] <= 0: continue
+                      d = compute_delta(live_close, row['strike'], row['impliedVolatility']*100, days_to_exp, True)
+                      diff = abs(d - global_target_delta)
+                      if diff < min_call_diff: min_call_diff, best_call, best_call_delta = diff, row, d
+
+                  if best_call is None: best_call = calls.iloc[0]
+                  call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
+
+                  best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
+                  for _, row in puts.iterrows():
+                      if row['impliedVolatility'] <= 0: continue
+                      d = compute_delta(live_close, row['strike'], row['impliedVolatility']*100, days_to_exp, False)
+                      diff = abs(abs(d) - global_target_delta)
+                      if diff < min_put_diff: min_put_diff, best_put, best_put_delta = diff, row, d
+
+                  if best_put is None: best_put = puts.iloc[0]
+                  put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
 
                   return {
-                      "close": close_price,
+                      "close": range_close,
                       "atmStrike": atm_strike,
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
                       "earningsThisWeek": earnings_this_week,
                       "baseline": baseline_ticker,
                       "call15Strike": float(best_call['strike']),
-                      "call15Price": round(call15_mark, 2),
+                      "call15Price": round(call_mark, 2),
                       "call15Delta": round(best_call_delta, 2),
-                      "normCallPremium": round(norm_call_premium * 100, 3),
                       "put15Strike": float(best_put['strike']),
-                      "put15Price": round(put15_mark, 2),
-                      "put15Delta": round(best_put_delta, 2),
-                      "normPutPremium": round(norm_put_premium * 100, 3)
+                      "put15Price": round(put_mark, 2),
+                      "put15Delta": round(best_put_delta, 2)
                   }
               except Exception as e:
-                  print(f"Error fetching individual data for {yf_symbol}: {e}")
+                  print(f"Error {yf_symbol}: {e}")
                   return None
 
           individual_data = {}
-          # Map your UI ticker names to their exact Yahoo Finance symbols
           ticker_map = {
               "SPX": "^SPX", "NDX": "^NDX", "SPY": "SPY", "QQQ": "QQQ",
               "NVDA": "NVDA", "TSLA": "TSLA", "AAPL": "AAPL", "XOM": "XOM", 
@@ -338,15 +315,15 @@ jobs:
               "NFLX": "NFLX", "AMD": "AMD", "DELL": "DELL", "MU": "MU", 
               "NOW": "NOW", "CAT": "CAT", "GS": "GS", "NBIS": "NBIS"
           }
-          
           baselines = {
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
           for display_name, yf_sym in ticker_map.items():
-              individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines)
-              print(f"{display_name} Data: {individual_data[display_name]}")
-              time.sleep(2)
+              f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
+              individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines, f_data)
+              print(f"{display_name} Data OK")
+              time.sleep(2) 
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
@@ -354,24 +331,25 @@ jobs:
               "ndx": ndx, "vxn": vxn, "qqq": qqq,
               "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
               "date": date_str, "weekof": weekof,
+              "targetDelta": global_target_delta,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
               "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
-              "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts or [], "topCalls": ndx_top_calls or []},
-              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []},
-              "individuals": individual_data,
-              "targetDelta": target_delta,
+              "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts, "topCalls": ndx_top_calls},
+              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts, "topCalls": qqq_top_calls},
+              "individuals": individual_data
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
           PYEOF
 
       - name: Update scorecard
-        run: python3 scripts/update_scorecard.py
+        run: python3 scripts/update_scorecard.py || echo "No scorecard script found"
 
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/market.json data/scorecard.csv
-          git diff --staged --quiet || git commit -m "chore: Friday market update"
+          git add data/market.json || true
+          git add data/scorecard.csv || true
+          git diff --staged --quiet || git commit -m "chore: Daily automated market update"
           git push
