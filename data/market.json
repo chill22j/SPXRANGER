@@ -11,7 +11,7 @@
   "ndxStretch": 6.75,
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
-  "updated": "2026-06-21T20:49:38Z",
+  "updated": "2026-06-21T21:02:24Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -112,6 +112,54 @@
     ]
   },
   "individuals": {
+    "SPX": {
+      "close": 7500.58,
+      "atmStrike": 7500.0,
+      "straddleMove": 93.67,
+      "atmIV": 14.4,
+      "earningsThisWeek": false,
+      "baseline": "SPY",
+      "call15Strike": 7605.0,
+      "call15Price": 12.55,
+      "call15Delta": 0.14,
+      "normCallPremium": 0.167,
+      "put15Strike": 7360.0,
+      "put15Price": 18.5,
+      "put15Delta": -0.15,
+      "normPutPremium": 0.247
+    },
+    "NDX": {
+      "close": 30406.19,
+      "atmStrike": 30400.0,
+      "straddleMove": 686.76,
+      "atmIV": 26.16,
+      "earningsThisWeek": false,
+      "baseline": "QQQ",
+      "call15Strike": 31200.0,
+      "call15Price": 92.6,
+      "call15Delta": 0.14,
+      "normCallPremium": 0.305,
+      "put15Strike": 29450.0,
+      "put15Price": 134.0,
+      "put15Delta": -0.15,
+      "normPutPremium": 0.441
+    },
+    "QQQ": {
+      "close": 740.62,
+      "atmStrike": 741.0,
+      "straddleMove": 16.65,
+      "atmIV": 26.05,
+      "earningsThisWeek": false,
+      "baseline": "QQQ",
+      "call15Strike": 759.0,
+      "call15Price": 2.27,
+      "call15Delta": 0.15,
+      "normCallPremium": 0.306,
+      "put15Strike": 716.0,
+      "put15Price": 3.25,
+      "put15Delta": -0.15,
+      "normPutPremium": 0.439
+    },
     "NVDA": {
       "close": 210.69,
       "atmStrike": 210.0,
