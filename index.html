@@ -791,8 +791,10 @@
                 badgeClass = "badge-cheap";
             }
             
+            const deltaLabel = marketData.targetDelta ? Math.round(marketData.targetDelta * 100) : 15;
+            
             valuationHtml = `<div class="valuation-container">
-              <span>15Δ Put Relative Value:</span>
+              <span>${deltaLabel}Δ Put Relative Value:</span>
               <span class="badge ${badgeClass}">${Math.round(putRatio * 100)}% of ${baselineTicker}</span>
             </div>`;
         }
