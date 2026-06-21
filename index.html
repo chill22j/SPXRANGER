@@ -194,32 +194,6 @@
   <button class="main-tab-btn" data-ticker="OPM" onclick="switchTicker('OPM')">OPTIONS PRICING</button>
 </div>
 
-<div class="tab-bar" id="tabBar">
-  <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX</button>
-  <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX</button>
-  <button class="tab-btn" data-ticker="SPY" onclick="switchTicker('SPY')">SPY</button>
-  <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ</button>
-</div>
-
-<div class="tab-bar">
-  <button class="tab-btn" data-ticker="NVDA" onclick="switchTicker('NVDA')">NVDA</button>
-  <button class="tab-btn" data-ticker="TSLA" onclick="switchTicker('TSLA')">TSLA</button>
-  <button class="tab-btn" data-ticker="AAPL" onclick="switchTicker('AAPL')">AAPL</button>
-  <button class="tab-btn" data-ticker="XOM" onclick="switchTicker('XOM')">XOM</button>
-  <button class="tab-btn" data-ticker="AMZN" onclick="switchTicker('AMZN')">AMZN</button>
-  <button class="tab-btn" data-ticker="GOOG" onclick="switchTicker('GOOG')">GOOG</button>
-  <button class="tab-btn" data-ticker="MSFT" onclick="switchTicker('MSFT')">MSFT</button>
-  <button class="tab-btn" data-ticker="META" onclick="switchTicker('META')">META</button>
-  <button class="tab-btn" data-ticker="NFLX" onclick="switchTicker('NFLX')">NFLX</button>
-  <button class="tab-btn" data-ticker="AMD" onclick="switchTicker('AMD')">AMD</button>
-  <button class="tab-btn" data-ticker="DELL" onclick="switchTicker('DELL')">DELL</button>
-  <button class="tab-btn" data-ticker="MU" onclick="switchTicker('MU')">MU</button>
-  <button class="tab-btn" data-ticker="NOW" onclick="switchTicker('NOW')">NOW</button>
-  <button class="tab-btn" data-ticker="CAT" onclick="switchTicker('CAT')">CAT</button>
-  <button class="tab-btn" data-ticker="GS" onclick="switchTicker('GS')">GS</button>
-  <button class="tab-btn" data-ticker="NBIS" onclick="switchTicker('NBIS')">NBIS</button>
-</div>
-
   <div class="card" id="summaryView">
     <div class="card-title" id="summaryTitle">Weekly Range Summary — <span id="summaryWeek">—</span></div>
     <table class="summary-table" id="summaryTable">
@@ -610,7 +584,7 @@
     const updated = marketData.updated
       ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
       : (marketData.date || '');
-    status.textContent = '✓ Auto-loaded as of ' + updated + ' • Tap a ticker tab above for full details.';
+    status.textContent = '✓ Auto-loaded as of ' + updated;
   }
 
   function renderTicker() {
