@@ -172,6 +172,7 @@
   <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY</button>
   <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX</button>
   <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX</button>
+  <button class="tab-btn" data-ticker="SPY" onclick="switchTicker('SPY')">SPY</button>
   <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ</button>
 </div>
 <div class="tab-bar">
@@ -300,6 +301,11 @@
         upMult: null,
         downMult: { threshold: -3, factor: 1.10, target: 'kHigh' }
       }
+    },
+    SPY: {
+      label: 'SPY', longLabel: 'SPY ETF',
+      isIndividual: true,
+      formula: { type: 'spy-from-spx' }
     },
     QQQ: {
       label: 'QQQ', longLabel: 'QQQ ETF',
@@ -508,17 +514,17 @@
             pPrice = stockData.put15Price.toFixed(2);
             pDelta = stockData.put15Delta.toFixed(2);
 
-            const isNasdaq = stockData.baseline === 'QQQ';
-            const baseIV = isNasdaq ? marketData.vxn : marketData.vix;
-            
-            if (baseIV) {
-                const indexPremiumRaw = (baseIV / 100) * 0.14; 
-                
-                const callRatio = (stockData.normCallPremium / 100) / indexPremiumRaw;
+            // True relative valuation against actual ETF option premiums
+            const isBaseIndex = ['SPX', 'NDX', 'SPY', 'QQQ'].includes(ticker);
+            const baselineTicker = stockData.baseline; 
+            const baseData = marketData.individuals[baselineTicker];
+
+            if (!isBaseIndex && baseData && baseData.normCallPremium && baseData.normPutPremium) {
+                const callRatio = stockData.normCallPremium / baseData.normCallPremium;
                 if (callRatio >= 2.0) cClass = 'val-expensive';
                 else if (callRatio <= 0.5) cClass = 'val-cheap';
 
-                const putRatio = (stockData.normPutPremium / 100) / indexPremiumRaw;
+                const putRatio = stockData.normPutPremium / baseData.normPutPremium;
                 if (putRatio >= 2.0) pClass = 'val-expensive';
                 else if (putRatio <= 0.5) pClass = 'val-cheap';
             }
@@ -527,10 +533,11 @@
 
       // 3. Calculate the predicted range
       let pred = null;
-      if (close != null && (vol != null || ticker === 'QQQ')) {
+      if (close != null && (vol != null || ticker === 'QQQ' || ticker === 'SPY')) {
         if (cfg.formula.type === 'spx')                  pred = predictSPX(close, vol, stretch);
         else if (cfg.formula.type === 'ndx')             pred = predictNDX(close, vol, stretch);
         else if (cfg.formula.type === 'qqq-from-ndx')    pred = predictQQQ(close);
+        else if (cfg.formula.type === 'spy-from-spx')    pred = predictSPY(close);
         else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') pred = predictDynamicRange(close, ticker, vol);
       }
       
@@ -692,6 +699,26 @@
     };
   }
 
+  function predictSPY(spyClose) {
+    // Need SPX prediction first; pull SPX inputs from market data
+    if (!marketData) return null;
+    const spxClose = marketData.spx;
+    const spxVol = marketData.vix;
+    const spxStretch = marketData.stretch;
+    if (spxClose == null || spxVol == null) return null;
+    const spxPred = predictSPX(spxClose, spxVol, spxStretch);
+    const ratio = spyClose / spxClose;
+    return {
+      kLow: spxPred.kLow, kHigh: spxPred.kHigh, wv: spxPred.wv,
+      low: Math.round(spxPred.low * ratio),
+      high: Math.round(spxPred.high * ratio),
+      regime: 'Derived from SPX',
+      regimeClass: 'neutral',
+      stretchNote: ' | Ratio SPY/SPX = ' + ratio.toFixed(5),
+      spxPred
+    };
+  }
+
   // ======= Individual Ticker Logic (Pure Symmetric Baseline) =======
   function predictDynamicRange(close, ticker, vol) {
     const data = (marketData && marketData.individuals) ? marketData.individuals[ticker] : null;
@@ -761,6 +788,7 @@
     if (cfg.formula.type === 'spx')                  result = predictSPX(close, vol, stretch);
     else if (cfg.formula.type === 'ndx')             result = predictNDX(close, vol, stretch);
     else if (cfg.formula.type === 'qqq-from-ndx')    result = predictQQQ(close);
+    else if (cfg.formula.type === 'spy-from-spx')    result = predictSPY(close);
     else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') result = predictDynamicRange(close, currentTicker, vol);
 
     if (!result) { alert('Cannot compute prediction — missing required market data.'); return; }
@@ -770,9 +798,15 @@
 
     // Render regime card
     document.getElementById('regimeCard').style.display = 'block';
-    const regimeText = cfg.formula.type === 'qqq-from-ndx'
-      ? '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — using NDX prediction × QQQ/NDX ratio' + result.stretchNote
-      : '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — ' + cfg.volLabel + ' ' + vol.toFixed(2) + ' → kLow=' + result.kLow.toFixed(2) + ' kHigh=' + result.kHigh.toFixed(2) + ' | weekly vol=' + (result.wv * 100).toFixed(2) + '%' + result.stretchNote;
+    
+    let regimeText = '';
+    if (cfg.formula.type === 'qqq-from-ndx') {
+        regimeText = '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — using NDX prediction × QQQ/NDX ratio' + result.stretchNote;
+    } else if (cfg.formula.type === 'spy-from-spx') {
+        regimeText = '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — using SPX prediction × SPY/SPX ratio' + result.stretchNote;
+    } else {
+        regimeText = '<span class="dot dot-' + result.regimeClass + '"></span>' + result.regime + ' — ' + cfg.volLabel + ' ' + vol.toFixed(2) + ' → kLow=' + result.kLow.toFixed(2) + ' kHigh=' + result.kHigh.toFixed(2) + ' | weekly vol=' + (result.wv * 100).toFixed(2) + '%' + result.stretchNote;
+    }
     document.getElementById('regimeBadge').innerHTML = '<div class="regime-badge regime-' + result.regimeClass + '">' + regimeText + '</div>';
     document.getElementById('effVol').textContent = vol.toFixed(1) + '%';
     document.getElementById('lowMult').textContent = (1 - result.kLow * result.wv).toFixed(4);
