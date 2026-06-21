@@ -315,16 +315,23 @@ jobs:
                   return None
 
           individual_data = {}
-          tickers = ["NVDA", "TSLA", "AAPL", "XOM", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "CAT", "GS", "NBIS"]
-          
-          baselines = {
-              "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS"]
+          # Map your UI ticker names to their exact Yahoo Finance symbols
+          ticker_map = {
+              "SPX": "^SPX", "NDX": "^NDX", "QQQ": "QQQ",
+              "NVDA": "NVDA", "TSLA": "TSLA", "AAPL": "AAPL", "XOM": "XOM", 
+              "AMZN": "AMZN", "GOOG": "GOOG", "MSFT": "MSFT", "META": "META", 
+              "NFLX": "NFLX", "AMD": "AMD", "DELL": "DELL", "MU": "MU", 
+              "NOW": "NOW", "CAT": "CAT", "GS": "GS", "NBIS": "NBIS"
           }
           
-          for sym in tickers:
-              individual_data[sym] = compute_individual_metrics(sym, mon, baselines)
-              print(f"{sym} Data: {individual_data[sym]}")
-              time.sleep(2) 
+          baselines = {
+              "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
+          }
+          
+          for display_name, yf_sym in ticker_map.items():
+              individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines)
+              print(f"{display_name} Data: {individual_data[display_name]}")
+              time.sleep(2)
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
