@@ -13,6 +13,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  /* Big Master Tabs at Top */
+  .main-tabs { display:flex; gap:12px; margin-bottom:16px; }
+  .main-tab-btn { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--muted2); font-family:var(--font-mono); font-size:15px; font-weight:600; letter-spacing:0.12em; padding:16px; cursor:pointer; border-radius:6px; transition:all 0.15s; text-transform:uppercase; }
+  .main-tab-btn:hover { background:var(--surface2); color:var(--text); }
+  .main-tab-btn.active { background:rgba(74, 240, 160, 0.05); color:var(--accent); border-color:var(--accent); }
+
   .valuation-container {
       display: flex;
       align-items: center;
@@ -30,6 +36,12 @@
       font-size: 0.85em;
       letter-spacing: 0.5px;
   }
+  
+  /* Individual Card Badges */
+  .badge-expensive { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .badge-elevated { background-color: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3); }
+  .badge-cheap { background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+  .badge-fair { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); }
 
   /* Main Table Cell Highlights */
   .val-expensive { background-color: rgba(239, 68, 68, 0.25) !important; color: #ef4444 !important; font-weight: bold; }
@@ -141,7 +153,6 @@
   .summary-table td { padding:14px 8px; border-bottom:1px solid var(--surface2); font-size:14px; }
   .summary-table tr:last-child td { border-bottom:none; }
   .summary-table .ticker-cell { font-weight:600; color:var(--text); letter-spacing:0.05em; }
-  .summary-table .ticker-cell .ticker-sub { display:block; font-size:9px; color:var(--muted2); font-weight:400; margin-top:2px; letter-spacing:0.06em; text-transform:none; }
   .summary-table .close-cell { color:var(--text); }
   .summary-table .low-cell { color:var(--accent); font-weight:500; }
   .summary-table .high-cell { color:var(--accent2); font-weight:500; }
@@ -165,27 +176,31 @@
     .options-grid { grid-template-columns:1fr; }
     .walls-row { grid-template-columns:1fr; }
     .tab-btn { font-size:11px; padding:8px 4px; }
-    .tab-btn .tab-sub { display:none; }
     .summary-table th { font-size:8px; padding:8px 4px; }
     .summary-table td { padding:12px 4px; font-size:13px; }
-    .summary-table .ticker-cell .ticker-sub { display:none; }
+    .main-tab-btn { font-size:13px; padding:12px; }
   }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v5.1.4</span></div>
+    <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v6.0.0</span></div>
     <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
   </header>
 
+<div class="main-tabs">
+  <button class="main-tab-btn active" data-ticker="RANGES" onclick="switchTicker('RANGES')">RANGES</button>
+  <button class="main-tab-btn" data-ticker="OPM" onclick="switchTicker('OPM')">OPM EDGE</button>
+</div>
+
 <div class="tab-bar" id="tabBar">
-  <button class="tab-btn active" data-ticker="SUMMARY" onclick="switchTicker('SUMMARY')">SUMMARY</button>
   <button class="tab-btn" data-ticker="SPX" onclick="switchTicker('SPX')">SPX</button>
   <button class="tab-btn" data-ticker="NDX" onclick="switchTicker('NDX')">NDX</button>
   <button class="tab-btn" data-ticker="SPY" onclick="switchTicker('SPY')">SPY</button>
   <button class="tab-btn" data-ticker="QQQ" onclick="switchTicker('QQQ')">QQQ</button>
 </div>
+
 <div class="tab-bar">
   <button class="tab-btn" data-ticker="NVDA" onclick="switchTicker('NVDA')">NVDA</button>
   <button class="tab-btn" data-ticker="TSLA" onclick="switchTicker('TSLA')">TSLA</button>
@@ -206,22 +221,10 @@
 </div>
 
   <div class="card" id="summaryView">
-    <div class="card-title">Weekly Range Summary — <span id="summaryWeek">—</span></div>
+    <div class="card-title" id="summaryTitle">Weekly Range Summary — <span id="summaryWeek">—</span></div>
     <table class="summary-table" id="summaryTable">
       <thead>
-        <tr>
-          <th>TICKER</th>
-          <th>PREV CLOSE</th>
-          <th class="th-low">PRED LOW</th>
-          <th class="th-high">PRED HIGH</th>
-          <th>P STRIKE</th>
-          <th>P DELTA</th>
-          <th>P PRICE</th>
-          <th>C STRIKE</th>
-          <th>C DELTA</th>
-          <th>C PRICE</th>
-        </tr>
-      </thead>
+        </thead>
       <tbody id="summaryBody"></tbody>
     </table>
     <div class="summary-status" id="summaryStatus"></div>
@@ -405,7 +408,7 @@
   };
 
   // ======= State =======
-  let currentTicker = 'SUMMARY';
+  let currentTicker = 'RANGES'; // Default view is now RANGES
   let marketData = null;     
   let lastResult = null;     
   let history = {
@@ -417,7 +420,7 @@
   // ======= Data load =======
   async function loadLatestData() {
     const status = document.getElementById('fetchStatus');
-    if (currentTicker === 'SUMMARY') renderSummary();
+    if (currentTicker === 'RANGES' || currentTicker === 'OPM') renderSummary();
     try {
       const res = await fetch('data/market.json?_=' + Date.now());
       if (!res.ok) throw new Error('not found');
@@ -427,12 +430,13 @@
         : (marketData.date || '');
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded as of ' + updated;
-      if (currentTicker === 'SUMMARY') renderSummary();
+      
+      if (currentTicker === 'RANGES' || currentTicker === 'OPM') renderSummary();
       else renderTicker();
     } catch (e) {
       status.className = 'fetch-status err';
       status.textContent = 'Could not load market data. Enter manually below.';
-      if (currentTicker === 'SUMMARY') {
+      if (currentTicker === 'RANGES' || currentTicker === 'OPM') {
         const body = document.getElementById('summaryBody');
         body.innerHTML = '<tr><td colspan="10" class="empty-cell">Could not load market data.</td></tr>';
       }
@@ -441,13 +445,15 @@
 
   // ======= Ticker switching =======
   function switchTicker(ticker) {
-    if (ticker !== 'SUMMARY' && !TICKER_CONFIG[ticker]) return;
+    if (ticker !== 'RANGES' && ticker !== 'OPM' && !TICKER_CONFIG[ticker]) return;
     currentTicker = ticker;
-    document.querySelectorAll('.tab-btn').forEach(b => {
+    
+    // Toggle active state for all buttons (both main tabs and ticker tabs)
+    document.querySelectorAll('.main-tab-btn, .tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.ticker === ticker);
     });
 
-    if (ticker === 'SUMMARY') {
+    if (ticker === 'RANGES' || ticker === 'OPM') {
       document.getElementById('summaryView').style.display = 'block';
       document.getElementById('tickerView').style.display = 'none';
       lastResult = null;
@@ -455,6 +461,7 @@
       return;
     }
 
+    // Entering a specific Ticker View
     document.getElementById('summaryView').style.display = 'none';
     document.getElementById('tickerView').style.display = 'block';
     document.getElementById('regimeCard').style.display = 'none';
@@ -467,17 +474,44 @@
   // ======= Summary rendering =======
   function renderSummary() {
     const body = document.getElementById('summaryBody');
+    const head = document.querySelector('#summaryTable thead');
     const status = document.getElementById('summaryStatus');
-    const weekEl = document.getElementById('summaryWeek');
+
+    // Update Title based on active tab
+    const weekText = marketData ? marketData.weekof : '—';
+    const titleText = currentTicker === 'RANGES' ? 'Weekly Range Summary' : 'Options Pricing Model (OPM)';
+    document.getElementById('summaryTitle').innerHTML = `${titleText} — <span>${weekText}</span>`;
 
     if (!marketData) {
       body.innerHTML = '<tr><td colspan="10" class="empty-cell">Waiting for market data…</td></tr>';
-      weekEl.textContent = '—';
       status.textContent = '';
       return;
     }
 
-    weekEl.textContent = marketData.weekof || '—';
+    // Swap Table Headers based on mode
+    if (currentTicker === 'RANGES') {
+        head.innerHTML = `
+          <tr>
+            <th>TICKER</th>
+            <th>PREV CLOSE</th>
+            <th class="th-low">PRED LOW</th>
+            <th class="th-high">PRED HIGH</th>
+          </tr>
+        `;
+    } else {
+        head.innerHTML = `
+          <tr>
+            <th>TICKER</th>
+            <th>PREV CLOSE</th>
+            <th>P STRIKE</th>
+            <th>P DELTA</th>
+            <th>P PRICE</th>
+            <th>C STRIKE</th>
+            <th>C DELTA</th>
+            <th>C PRICE</th>
+          </tr>
+        `;
+    }
 
     const rows = [];
     for (const ticker of Object.keys(TICKER_CONFIG)) {
@@ -495,7 +529,7 @@
         close = stockData.close;
         vol = stockData.atmIV;
         if (stockData.earningsThisWeek) {
-          earningsHtml = `<span class="earnings-badge" style="margin-left:6px; font-size:0.7em;">EARNINGS</span>`;
+          earningsHtml = `<span class="earnings-badge">EARNINGS</span>`;
         }
       } else if (!cfg.isIndividual) {
         close = marketData[cfg.closeField];
@@ -544,21 +578,32 @@
         else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') pred = predictDynamicRange(close, ticker, vol);
       }
       
-      // 4. Print the row with Puts on the Left, Calls on the Right
-      rows.push(
-        '<tr>' +
-          '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
-          '<td class="close-cell">' + (close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>') + '</td>' +
-          '<td class="' + (pred ? 'low-cell' : 'empty-cell') + '">' + (pred ? pred.low.toLocaleString() : '—') + '</td>' +
-          '<td class="' + (pred ? 'high-cell' : 'empty-cell') + '">' + (pred ? pred.high.toLocaleString() : '—') + '</td>' +
-          '<td class="opt-cell">' + pStrike + '</td>' +
-          '<td class="opt-cell">' + pDelta + '</td>' +
-          '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
-          '<td class="opt-cell">' + cStrike + '</td>' +
-          '<td class="opt-cell">' + cDelta + '</td>' +
-          '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
-        '</tr>'
-      );
+      // 4. Print the appropriate row based on the active tab
+      const closeDisplay = close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>';
+
+      if (currentTicker === 'RANGES') {
+          rows.push(
+            '<tr>' +
+              '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
+              '<td class="close-cell">' + closeDisplay + '</td>' +
+              '<td class="' + (pred ? 'low-cell' : 'empty-cell') + '">' + (pred ? pred.low.toLocaleString() : '—') + '</td>' +
+              '<td class="' + (pred ? 'high-cell' : 'empty-cell') + '">' + (pred ? pred.high.toLocaleString() : '—') + '</td>' +
+            '</tr>'
+          );
+      } else {
+          rows.push(
+            '<tr>' +
+              '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
+              '<td class="close-cell">' + closeDisplay + '</td>' +
+              '<td class="opt-cell">' + pStrike + '</td>' +
+              '<td class="opt-cell">' + pDelta + '</td>' +
+              '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
+              '<td class="opt-cell">' + cStrike + '</td>' +
+              '<td class="opt-cell">' + cDelta + '</td>' +
+              '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
+            '</tr>'
+          );
+      }
     }
     body.innerHTML = rows.join('');
 
