@@ -2,7 +2,7 @@ name: Friday Market Update
 
 on:
   schedule:
-    - cron: '0 14 * * 6'
+    - cron: '0 14 * * 1-5' # Runs Mon-Fri at 10:00 AM EDT
   workflow_dispatch:
 
 jobs:
@@ -243,15 +243,20 @@ jobs:
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
-                  # --- 2. NEW LOGIC (Both 15-Delta Call & Put) ---
-                  # Find 15-Delta Call
+                  # --- 2. NEW LOGIC (Dynamic Rolling Delta) ---
+                  # Mon=0(10Δ), Tue=1(15Δ), Wed=2(20Δ), Thu=3(25Δ), Fri=4(30Δ)
+                  today_weekday = datetime.datetime.utcnow().weekday()
+                  delta_map = {0: 0.10, 1: 0.15, 2: 0.20, 3: 0.25, 4: 0.30}
+                  target_delta = delta_map.get(today_weekday, 0.15) 
+
+                  # Find Target Delta Call
                   best_call = None
                   min_call_diff = float('inf')
-                  best_call_delta = 0.15
+                  best_call_delta = target_delta
                   for _, row in calls.iterrows():
                       if row['impliedVolatility'] <= 0: continue
                       d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=True)
-                      diff = abs(d - 0.15)
+                      diff = abs(d - target_delta)
                       if diff < min_call_diff:
                           min_call_diff = diff
                           best_call = row
@@ -261,14 +266,14 @@ jobs:
                   call15_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   norm_call_premium = call15_mark / close_price
 
-                  # Find 15-Delta Put
+                  # Find Target Delta Put
                   best_put = None
                   min_put_diff = float('inf')
-                  best_put_delta = -0.15
+                  best_put_delta = -target_delta
                   for _, row in puts.iterrows():
                       if row['impliedVolatility'] <= 0: continue
                       d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=False)
-                      diff = abs(abs(d) - 0.15)
+                      diff = abs(abs(d) - target_delta)
                       if diff < min_put_diff:
                           min_put_diff = diff
                           best_put = row
@@ -343,7 +348,8 @@ jobs:
               "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
               "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts or [], "topCalls": ndx_top_calls or []},
               "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts or [], "topCalls": qqq_top_calls or []},
-              "individuals": individual_data
+              "individuals": individual_data,
+              "targetDelta": target_delta,
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
