@@ -59,7 +59,7 @@ jobs:
           qqq_timestamps = qqq_result["timestamp"]
           qqq_closes     = qqq_result["indicators"]["quote"][0]["close"]
 
-          # Find the most recent valid trading day (Handles holiday-shortened weeks)
+          # Find the most recent valid trading day
           last_trading_idx = len(spx_timestamps) - 1
           while last_trading_idx >= 0 and not spx_closes[last_trading_idx]:
               last_trading_idx -= 1
@@ -93,7 +93,6 @@ jobs:
               if len(valid_50) >= 40:
                   ma50 = round(sum(valid_50) / len(valid_50), 2)
                   stretch_pct = round(((spx - ma50) / ma50) * 100, 2)
-          print(f"MA50={ma50}  Stretch={stretch_pct}%")
 
           # Find NDX/VXN/QQQ closes for same Friday
           def find_close_for_date(ts_list, c_list, td):
@@ -118,7 +117,6 @@ jobs:
               if len(valid_50_ndx) >= 40 and ndx is not None:
                   ndx_ma50 = round(sum(valid_50_ndx) / len(valid_50_ndx), 2)
                   ndx_stretch_pct = round(((ndx - ndx_ma50) / ndx_ma50) * 100, 2)
-          print(f"NDX={ndx}  VXN={vxn}  QQQ={qqq}  NDX_MA50={ndx_ma50}  NDX_Stretch={ndx_stretch_pct}%")
 
           # HV20
           valid_closes = [c for c in spx_closes if c]
@@ -130,14 +128,12 @@ jobs:
           else:
               hv20 = None
 
-          # Coming week (Calculates next Mon-Fri safely from any day of the week)
           days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
           if last_trading_dt.weekday() == 0: days_to_mon = 7
           mon = last_trading_dt + datetime.timedelta(days=days_to_mon)
           fri_next = mon + datetime.timedelta(days=4)
           weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
 
-          # Options helper - reused for SPX/NDX/QQQ
           def compute_options(yf_symbol, price, mon_dt):
               max_pain = None
               top_puts = []
@@ -176,20 +172,17 @@ jobs:
                       top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
                       top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
               except Exception as e:
-                  print(f"Options error for {yf_symbol}: {e}")
+                  pass
               return max_pain, top_puts, top_calls, options_expiry
 
-          # Compute options for all three tickers
           max_pain, top_puts, top_calls, options_expiry = compute_options("^SPX", spx, mon)
-          print(f"SPX options: maxPain={max_pain} expiry={options_expiry} puts={len(top_puts)} calls={len(top_calls)}")
           ndx_max_pain = ndx_top_puts = ndx_top_calls = ndx_options_expiry = None
           qqq_max_pain = qqq_top_puts = qqq_top_calls = qqq_options_expiry = None
+          
           if ndx is not None:
               ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
-              print(f"NDX options: maxPain={ndx_max_pain} expiry={ndx_options_expiry} puts={len(ndx_top_puts or [])} calls={len(ndx_top_calls or [])}")
           if qqq is not None:
               qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
-              print(f"QQQ options: maxPain={qqq_max_pain} expiry={qqq_options_expiry} puts={len(qqq_top_puts or [])} calls={len(qqq_top_calls or [])}")
 
           # ======= Individual Tickers (Options & Volatility Methods) =======
           def cdf_normal(x):
@@ -210,7 +203,6 @@ jobs:
                   hist = t.history(period="1mo")
                   if hist.empty: return None
                   
-                  # Anchor strictly to previous week's close
                   hist['date_only'] = hist.index.date
                   valid_hist = hist[hist['date_only'] < mon_dt.date()]
                   
@@ -279,7 +271,7 @@ jobs:
                               if mon_dt.date() <= naive_date.date() <= fri_dt.date():
                                   earnings_this_week = True
                                   break
-                  except Exception as e:
+                  except Exception:
                       pass 
 
                   return {
@@ -300,7 +292,6 @@ jobs:
           individual_data = {}
           tickers = ["NVDA", "TSLA", "AAPL", "XOM", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "CAT", "GS", "NBIS"]
           
-          # Defines the baselines and passes them safely into the function
           baselines = {
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS"]
           }
@@ -308,12 +299,7 @@ jobs:
           for sym in tickers:
               individual_data[sym] = compute_individual_metrics(sym, mon, baselines)
               print(f"{sym} Data: {individual_data[sym]}")
-              time.sleep(2) # Pause for 2 seconds to avoid Yahoo rate limits!
-          
-          for sym in tickers:
-              individual_data[sym] = compute_individual_metrics(sym, mon)
-              print(f"{sym} Data: {individual_data[sym]}")
-              time.sleep(2) # Pause for 2 seconds to avoid Yahoo rate limits!
+              time.sleep(2) 
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
@@ -329,7 +315,6 @@ jobs:
           }
           with open("data/market.json", "w") as f:
               json.dump(payload, f, indent=2)
-          print(f"SAVED: SPX={spx} VIX={vix} MA50={ma50} stretch={stretch_pct}% maxPain={max_pain}")
           PYEOF
 
       - name: Update scorecard
