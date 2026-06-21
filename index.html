@@ -24,6 +24,7 @@
       color: var(--text-muted);
     }
     .val-expensive { background-color: rgba(239, 68, 68, 0.25) !important; color: #ef4444 !important; font-weight: bold; }
+    .val-elevated { background-color: rgba(249, 115, 22, 0.25) !important; color: #f97316 !important; font-weight: bold; }
     .val-cheap { background-color: rgba(59, 130, 246, 0.25) !important; color: #3b82f6 !important; font-weight: bold; }
   .earnings-badge {
     background-color: #ff9800;
@@ -519,13 +520,15 @@
             const baselineTicker = stockData.baseline; 
             const baseData = marketData.individuals[baselineTicker];
 
-            if (!isBaseIndex && baseData && baseData.normCallPremium && baseData.normPutPremium) {
-                const callRatio = stockData.normCallPremium / baseData.normCallPremium;
+            if (!isBaseIndex && baseData && baseData.call15Price && baseData.put15Price) {
+                const callRatio = stockData.call15Price / baseData.call15Price;
                 if (callRatio >= 2.0) cClass = 'val-expensive';
+                else if (callRatio >= 1.5) cClass = 'val-elevated';
                 else if (callRatio <= 0.5) cClass = 'val-cheap';
 
-                const putRatio = stockData.normPutPremium / baseData.normPutPremium;
+                const putRatio = stockData.put15Price / baseData.put15Price;
                 if (putRatio >= 2.0) pClass = 'val-expensive';
+                else if (putRatio >= 1.5) pClass = 'val-elevated';
                 else if (putRatio <= 0.5) pClass = 'val-cheap';
             }
         }
@@ -751,9 +754,13 @@
         
         let badgeClass = "badge-fair";
         
-        // Trigger Red for 200%+ (Expensive) or Blue for 50%- (Cheap)
+        let badgeClass = "badge-fair";
+        
+        // Trigger Red for 200%+, Orange for 150%+, or Blue for 50%-
         if (premiumRatio >= 2.0) {
             badgeClass = "badge-expensive";
+        } else if (premiumRatio >= 1.5) {
+            badgeClass = "badge-elevated";
         } else if (premiumRatio <= 0.5) {
             badgeClass = "badge-cheap";
         }
