@@ -53,20 +53,13 @@ jobs:
           qqq_timestamps = qqq_result["timestamp"]
           qqq_closes     = qqq_result["indicators"]["quote"][0]["close"]
 
-          # Find most recent Friday in SPX data
-          last_friday_ts = None
-          last_friday_idx = None
-          for i in range(len(spx_timestamps)-1, -1, -1):
-              dt = datetime.datetime.utcfromtimestamp(spx_timestamps[i])
-              if dt.weekday() == 4 and spx_closes[i]:
-                  last_friday_ts = spx_timestamps[i]
-                  last_friday_idx = i
-                  last_friday_dt = dt
-                  break
-
-          if last_friday_idx is None:
-              last_friday_idx = len(spx_timestamps) - 1
-              last_friday_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[-1])
+          # Find the most recent valid trading day (Handles holiday-shortened weeks)
+          last_trading_idx = len(spx_timestamps) - 1
+          while last_trading_idx >= 0 and not spx_closes[last_trading_idx]:
+              last_trading_idx -= 1
+              
+          last_trading_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[last_trading_idx])
+          last_friday_idx = last_trading_idx # Reusing variable name for downstream logic
 
           spx = round(spx_closes[last_friday_idx], 2)
 
