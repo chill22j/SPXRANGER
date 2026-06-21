@@ -192,7 +192,19 @@ jobs:
               print(f"QQQ options: maxPain={qqq_max_pain} expiry={qqq_options_expiry} puts={len(qqq_top_puts or [])} calls={len(qqq_top_calls or [])}")
 
           # ======= Individual Tickers (Options & Volatility Methods) =======
-          def compute_individual_metrics(yf_symbol, mon_dt):
+          def cdf_normal(x):
+              return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+
+          def compute_delta(spot, strike, iv_pct, days_to_exp, is_call=True):
+              if iv_pct <= 0 or days_to_exp <= 0 or spot <= 0 or strike <= 0:
+                  return 0.5
+              t = days_to_exp / 365.0
+              sigma = iv_pct / 100.0
+              d1 = (math.log(spot / strike) + (0.5 * sigma ** 2) * t) / (sigma * math.sqrt(t))
+              delta = cdf_normal(d1)
+              return delta if is_call else (delta - 1.0)
+
+          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines):
               try:
                   t = yf.Ticker(yf_symbol)
                   hist = t.history(period="1mo")
@@ -215,20 +227,23 @@ jobs:
                   if not target_exp and expirations:
                       target_exp = expirations[0]
 
+                  exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
+                  days_to_exp = max((exp_dt.date() - mon_dt.date()).days, 1)
+
                   chain = t.option_chain(target_exp)
                   calls = chain.calls
                   puts = chain.puts
                   
                   if calls.empty or puts.empty: return None
 
-                  # SAFELY find nearest Call and Put independently
+                  # --- 1. EXISTING LOGIC (ATM Straddle & Volatility) ---
                   calls['dist'] = abs(calls['strike'] - close_price)
                   atm_call = calls.loc[calls['dist'].idxmin()]
 
                   puts['dist'] = abs(puts['strike'] - close_price)
                   atm_put = puts.loc[puts['dist'].idxmin()]
 
-                  atm_strike = float(atm_call['strike']) # Just for reporting
+                  atm_strike = float(atm_call['strike'])
 
                   call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
                   put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
@@ -236,7 +251,24 @@ jobs:
                   straddle_move = round((call_mark + put_mark) * 0.85, 2)
                   atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
 
-                  # ======= Check for Earnings This Week =======
+                  # --- 2. NEW LOGIC (15-Delta Valuation) ---
+                  best_put = None
+                  min_delta_diff = float('inf')
+                  for _, row in puts.iterrows():
+                      if row['impliedVolatility'] <= 0: continue
+                      d = compute_delta(close_price, row['strike'], row['impliedVolatility']*100, days_to_exp, is_call=False)
+                      diff = abs(abs(d) - 0.15)
+                      if diff < min_delta_diff:
+                          min_delta_diff = diff
+                          best_put = row
+
+                  if best_put is None: best_put = puts.iloc[0]
+
+                  put15_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
+                  norm_premium = put15_mark / close_price
+                  baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
+
+                  # --- 3. EXISTING LOGIC (Earnings Check) ---
                   earnings_this_week = False
                   try:
                       earnings_df = t.get_earnings_dates(limit=5)
@@ -248,14 +280,18 @@ jobs:
                                   earnings_this_week = True
                                   break
                   except Exception as e:
-                      pass # Suppressed the error log to keep it clean
+                      pass 
 
                   return {
                       "close": close_price,
                       "atmStrike": atm_strike,
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
-                      "earningsThisWeek": earnings_this_week
+                      "earningsThisWeek": earnings_this_week,
+                      "put15DeltaPrice": round(put15_mark, 2),
+                      "put15DeltaStrike": float(best_put['strike']),
+                      "normPremium": round(norm_premium * 100, 3),
+                      "baseline": baseline_ticker
                   }
               except Exception as e:
                   print(f"Error fetching individual data for {yf_symbol}: {e}")
@@ -263,6 +299,16 @@ jobs:
 
           individual_data = {}
           tickers = ["NVDA", "TSLA", "AAPL", "XOM", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "CAT", "GS", "NBIS"]
+          
+          # Defines the baselines and passes them safely into the function
+          baselines = {
+              "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS"]
+          }
+          
+          for sym in tickers:
+              individual_data[sym] = compute_individual_metrics(sym, mon, baselines)
+              print(f"{sym} Data: {individual_data[sym]}")
+              time.sleep(2) # Pause for 2 seconds to avoid Yahoo rate limits!
           
           for sym in tickers:
               individual_data[sym] = compute_individual_metrics(sym, mon)
