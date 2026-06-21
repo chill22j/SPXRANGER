@@ -317,7 +317,7 @@ jobs:
           individual_data = {}
           # Map your UI ticker names to their exact Yahoo Finance symbols
           ticker_map = {
-              "SPX": "^SPX", "NDX": "^NDX", "QQQ": "QQQ",
+              "SPX": "^SPX", "NDX": "^NDX", "SPY": "SPY", "QQQ": "QQQ",
               "NVDA": "NVDA", "TSLA": "TSLA", "AAPL": "AAPL", "XOM": "XOM", 
               "AMZN": "AMZN", "GOOG": "GOOG", "MSFT": "MSFT", "META": "META", 
               "NFLX": "NFLX", "AMD": "AMD", "DELL": "DELL", "MU": "MU", 
