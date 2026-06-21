@@ -202,14 +202,16 @@
           <th>PREV CLOSE</th>
           <th class="th-low">PRED LOW</th>
           <th class="th-high">PRED HIGH</th>
-          <th>C STRIKE</th>
-          <th>C PRICE</th>
-          <th>C DELTA</th>
-          <th>P STRIKE</th>
-          <th>P PRICE</th>
-          <th>P DELTA</th>
+          <th>PUT STRIKE</th>
+          <th>PUT DELTA</th>
+          <th>PUT PRICE</th>
+          <th>CALL STRIKE</th>
+          <th>CALL DELTA</th>
+          <th>CALL PRICE</th>
         </tr>
       </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
       <tbody id="summaryBody"></tbody>
     </table>
     <div class="summary-status" id="summaryStatus"></div>
@@ -476,21 +478,28 @@
       let close, vol, stretch;
       let earningsHtml = ''; 
       
-      // New Option Variables
       let cStrike = '—', cPrice = '—', cDelta = '—', pStrike = '—', pPrice = '—', pDelta = '—';
       let cClass = '', pClass = '';
 
+      // 1. Get the standard pricing variables
       if (cfg.isIndividual && marketData.individuals && marketData.individuals[ticker]) {
         const stockData = marketData.individuals[ticker];
         close = stockData.close;
         vol = stockData.atmIV;
-        
         if (stockData.earningsThisWeek) {
           earningsHtml = `<span class="earnings-badge" style="margin-left:6px; font-size:0.7em;">EARNINGS</span>`;
         }
+      } else if (!cfg.isIndividual) {
+        close = marketData[cfg.closeField];
+        vol = marketData[cfg.volField];
+        stretch = marketData[cfg.stretchField];
+      }
 
-        // Calculate independent relative values for Calls and Puts
-        if (stockData && stockData.normCallPremium && stockData.normPutPremium) {
+      // 2. Fetch Options Data for EVERY ticker (Indices included)
+      if (marketData.individuals && marketData.individuals[ticker]) {
+        const stockData = marketData.individuals[ticker];
+        
+        if (stockData.normCallPremium && stockData.normPutPremium) {
             cStrike = stockData.call15Strike;
             cPrice = stockData.call15Price.toFixed(2);
             cDelta = stockData.call15Delta.toFixed(2);
@@ -514,13 +523,9 @@
                 else if (putRatio <= 0.5) pClass = 'val-cheap';
             }
         }
-
-      } else if (!cfg.isIndividual) {
-        close = marketData[cfg.closeField];
-        vol = marketData[cfg.volField];
-        stretch = marketData[cfg.stretchField];
       }
 
+      // 3. Calculate the predicted range
       let pred = null;
       if (close != null && (vol != null || ticker === 'QQQ')) {
         if (cfg.formula.type === 'spx')                  pred = predictSPX(close, vol, stretch);
@@ -529,18 +534,19 @@
         else if (cfg.formula.type === 'options-straddle' || cfg.formula.type === 'volatility-iv') pred = predictDynamicRange(close, ticker, vol);
       }
       
+      // 4. Print the row with Puts on the Left, Calls on the Right
       rows.push(
         '<tr>' +
           '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
           '<td class="close-cell">' + (close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>') + '</td>' +
           '<td class="' + (pred ? 'low-cell' : 'empty-cell') + '">' + (pred ? pred.low.toLocaleString() : '—') + '</td>' +
           '<td class="' + (pred ? 'high-cell' : 'empty-cell') + '">' + (pred ? pred.high.toLocaleString() : '—') + '</td>' +
-          '<td class="opt-cell">' + cStrike + '</td>' +
-          '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
-          '<td class="opt-cell">' + cDelta + '</td>' +
           '<td class="opt-cell">' + pStrike + '</td>' +
-          '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
           '<td class="opt-cell">' + pDelta + '</td>' +
+          '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
+          '<td class="opt-cell">' + cStrike + '</td>' +
+          '<td class="opt-cell">' + cDelta + '</td>' +
+          '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
         '</tr>'
       );
     }
