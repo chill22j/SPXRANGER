@@ -25,7 +25,6 @@ jobs:
           def fetch_chart(symbol, period="3mo"):
               url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={period}"
               req = urllib.request.Request(url, headers=HEADERS)
-              # Add a retry loop to prevent instant crashes if Yahoo blocks the IP
               for attempt in range(5):
                   try:
                       with urllib.request.urlopen(req, timeout=10) as r:
@@ -67,6 +66,7 @@ jobs:
               
           last_trading_dt = datetime.datetime.utcfromtimestamp(spx_timestamps[last_trading_idx])
           last_friday_idx = last_trading_idx # Reusing variable name for downstream logic
+          last_friday_dt = last_trading_dt   # <--- THE BUG FIX IS HERE
 
           spx = round(spx_closes[last_friday_idx], 2)
 
