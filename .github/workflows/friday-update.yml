@@ -270,7 +270,7 @@ jobs:
                                       earnings_this_week = True; break
                       except Exception: pass
 
-                  # B. CALCULATE LIVE OPM
+                 # B. CALCULATE LIVE OPM
                   best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
                   for _, row in calls.iterrows():
                       if row['impliedVolatility'] <= 0: continue
@@ -278,14 +278,10 @@ jobs:
                       diff = abs(d - global_target_delta)
                       if diff < min_call_diff: min_call_diff, best_call, best_call_delta = diff, row, d
 
-                  # --- CALL PVI ---
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   call_iv = best_call['impliedVolatility']
-                  if call_iv > 0:
-                      call_pvi = int(round(((call_mark / live_close) / (call_iv ** 2)) * 1000))
-                  else:
-                      call_pvi = 0
+                  call_pvi = int(round(((call_mark / live_close) / (call_iv ** 2)) * 1000)) if call_iv > 0 else 0
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -294,14 +290,11 @@ jobs:
                       diff = abs(abs(d) - global_target_delta)
                       if diff < min_put_diff: min_put_diff, best_put, best_put_delta = diff, row, d
 
-                  # --- PUT PVI ---
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
                   put_iv = best_put['impliedVolatility']
-                  if put_iv > 0:
-                      put_pvi = int(round(((put_mark / live_close) / (put_iv ** 2)) * 1000))
-                  else:
-                      put_pvi = 0
+                  put_pvi = int(round(((put_mark / live_close) / (put_iv ** 2)) * 1000)) if put_iv > 0 else 0
+
 
                   return {
                       "close": range_close,
