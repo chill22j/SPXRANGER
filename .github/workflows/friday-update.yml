@@ -278,7 +278,7 @@ jobs:
                       diff = abs(d - global_target_delta)
                       if diff < min_call_diff: min_call_diff, best_call, best_call_delta = diff, row, d
 
-                  iif best_call is None: best_call = calls.iloc[0]
+                  if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   call_iv = best_call['impliedVolatility']
                   call_pvi = int(round((call_mark / call_iv) * 10)) if call_iv > 0 else 0
