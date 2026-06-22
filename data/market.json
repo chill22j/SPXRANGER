@@ -12,7 +12,7 @@
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
   "targetDelta": 0.1,
-  "updated": "2026-06-22T02:10:43Z",
+  "updated": "2026-06-22T02:17:39Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -123,11 +123,11 @@
       "call15Strike": 7630.0,
       "call15Price": 6.55,
       "call15Delta": 0.1,
-      "call15Pvi": 53,
+      "call15Pvi": 70,
       "put15Strike": 7290.0,
-      "put15Price": 11.85,
+      "put15Price": 11.65,
       "put15Delta": -0.1,
-      "put15Pvi": 96
+      "put15Pvi": 124
     },
     "NDX": {
       "close": 30406.19,
@@ -139,11 +139,11 @@
       "call15Strike": 31450.0,
       "call15Price": 48.75,
       "call15Delta": 0.09,
-      "call15Pvi": 55,
+      "call15Pvi": 90,
       "put15Strike": 29000.0,
       "put15Price": 79.1,
       "put15Delta": -0.1,
-      "put15Pvi": 88
+      "put15Pvi": 146
     },
     "SPY": {
       "close": 746.74,
@@ -155,11 +155,11 @@
       "call15Strike": 761.0,
       "call15Price": 0.71,
       "call15Delta": 0.1,
-      "call15Pvi": 58,
+      "call15Pvi": 76,
       "put15Strike": 727.0,
       "put15Price": 1.04,
       "put15Delta": -0.1,
-      "put15Pvi": 85
+      "put15Pvi": 111
     },
     "QQQ": {
       "close": 740.62,
@@ -171,11 +171,11 @@
       "call15Strike": 765.0,
       "call15Price": 1.21,
       "call15Delta": 0.1,
-      "call15Pvi": 55,
+      "call15Pvi": 92,
       "put15Strike": 706.0,
       "put15Price": 2.01,
       "put15Delta": -0.1,
-      "put15Pvi": 91
+      "put15Pvi": 153
     },
     "NVDA": {
       "close": 210.69,
@@ -187,11 +187,11 @@
       "call15Strike": 222.5,
       "call15Price": 0.77,
       "call15Delta": 0.12,
-      "call15Pvi": 81,
+      "call15Pvi": 103,
       "put15Strike": 197.5,
       "put15Price": 0.73,
       "put15Delta": -0.1,
-      "put15Pvi": 78
+      "put15Pvi": 98
     },
     "TSLA": {
       "close": 400.49,
@@ -203,11 +203,11 @@
       "call15Strike": 430.0,
       "call15Price": 1.53,
       "call15Delta": 0.1,
-      "call15Pvi": 82,
+      "call15Pvi": 86,
       "put15Strike": 372.5,
       "put15Price": 1.44,
       "put15Delta": -0.09,
-      "put15Pvi": 77
+      "put15Pvi": 81
     },
     "AAPL": {
       "close": 298.01,
@@ -219,11 +219,11 @@
       "call15Strike": 310.0,
       "call15Price": 0.55,
       "call15Delta": 0.09,
-      "call15Pvi": 74,
+      "call15Pvi": 81,
       "put15Strike": 285.0,
       "put15Price": 0.51,
       "put15Delta": -0.08,
-      "put15Pvi": 70
+      "put15Pvi": 76
     },
     "XOM": {
       "close": 137.81,
@@ -235,11 +235,11 @@
       "call15Strike": 148.0,
       "call15Price": 0.28,
       "call15Delta": 0.09,
-      "call15Pvi": 69,
+      "call15Pvi": 81,
       "put15Strike": 129.0,
       "put15Price": 0.28,
       "put15Delta": -0.09,
-      "put15Pvi": 69
+      "put15Pvi": 81
     },
     "AMZN": {
       "close": 244.39,
@@ -251,11 +251,11 @@
       "call15Strike": 257.5,
       "call15Price": 0.78,
       "call15Delta": 0.11,
-      "call15Pvi": 96,
+      "call15Pvi": 105,
       "put15Strike": 230.0,
       "put15Price": 0.59,
       "put15Delta": -0.08,
-      "put15Pvi": 73
+      "put15Pvi": 80
     },
     "GOOG": {
       "close": 367.46,
@@ -271,7 +271,7 @@
       "put15Strike": 350.0,
       "put15Price": 1.11,
       "put15Delta": -0.11,
-      "put15Pvi": 106
+      "put15Pvi": 107
     },
     "MSFT": {
       "close": 379.4,
@@ -283,11 +283,11 @@
       "call15Strike": 400.0,
       "call15Price": 1.16,
       "call15Delta": 0.11,
-      "call15Pvi": 81,
+      "call15Pvi": 117,
       "put15Strike": 360.0,
       "put15Price": 1.13,
       "put15Delta": -0.11,
-      "put15Pvi": 79
+      "put15Pvi": 114
     },
     "META": {
       "close": 577.22,
@@ -299,11 +299,11 @@
       "call15Strike": 615.0,
       "call15Price": 1.64,
       "call15Delta": 0.09,
-      "call15Pvi": 64,
+      "call15Pvi": 78,
       "put15Strike": 545.0,
       "put15Price": 1.77,
       "put15Delta": -0.1,
-      "put15Pvi": 70
+      "put15Pvi": 85
     },
     "NFLX": {
       "close": 77.38,
@@ -315,11 +315,11 @@
       "call15Strike": 82.0,
       "call15Price": 0.18,
       "call15Delta": 0.09,
-      "call15Pvi": 109,
+      "call15Pvi": 71,
       "put15Strike": 73.0,
       "put15Price": 0.18,
       "put15Delta": -0.08,
-      "put15Pvi": 106
+      "put15Pvi": 69
     },
     "AMD": {
       "close": 537.37,
@@ -331,11 +331,11 @@
       "call15Strike": 610.0,
       "call15Price": 3.38,
       "call15Delta": 0.1,
-      "call15Pvi": 75,
+      "call15Pvi": 95,
       "put15Strike": 477.5,
       "put15Price": 3.83,
       "put15Delta": -0.1,
-      "put15Pvi": 85
+      "put15Pvi": 108
     },
     "DELL": {
       "close": 409.5,
@@ -347,11 +347,11 @@
       "call15Strike": 467.5,
       "call15Price": 2.87,
       "call15Delta": 0.1,
-      "call15Pvi": 56,
+      "call15Pvi": 111,
       "put15Strike": 360.0,
       "put15Price": 3.17,
       "put15Delta": -0.1,
-      "put15Pvi": 61
+      "put15Pvi": 123
     },
     "MU": {
       "close": 1133.99,
@@ -363,11 +363,11 @@
       "call15Strike": 1415.0,
       "call15Price": 12.25,
       "call15Delta": 0.1,
-      "call15Pvi": 94,
+      "call15Pvi": 154,
       "put15Strike": 922.5,
       "put15Price": 14.47,
       "put15Delta": -0.1,
-      "put15Pvi": 111
+      "put15Pvi": 181
     },
     "NOW": {
       "close": 95.04,
@@ -379,11 +379,11 @@
       "call15Strike": 105.0,
       "call15Price": 0.55,
       "call15Delta": 0.11,
-      "call15Pvi": 68,
+      "call15Pvi": 113,
       "put15Strike": 87.0,
       "put15Price": 0.5,
       "put15Delta": -0.1,
-      "put15Pvi": 62
+      "put15Pvi": 103
     },
     "CAT": {
       "close": 985.82,
@@ -395,11 +395,11 @@
       "call15Strike": 1060.0,
       "call15Price": 2.27,
       "call15Delta": 0.09,
-      "call15Pvi": 53,
+      "call15Pvi": 66,
       "put15Strike": 920.0,
       "put15Price": 2.79,
       "put15Delta": -0.1,
-      "put15Pvi": 65
+      "put15Pvi": 81
     },
     "GS": {
       "close": 1096.56,
@@ -411,11 +411,11 @@
       "call15Strike": 1160.0,
       "call15Price": 2.67,
       "call15Delta": 0.11,
-      "call15Pvi": 63,
+      "call15Pvi": 85,
       "put15Strike": 1035.0,
       "put15Price": 2.85,
       "put15Delta": -0.11,
-      "put15Pvi": 67
+      "put15Pvi": 91
     },
     "NBIS": {
       "close": 286.69,
@@ -427,11 +427,11 @@
       "call15Strike": 350.0,
       "call15Price": 2.33,
       "call15Delta": 0.09,
-      "call15Pvi": 79,
+      "call15Pvi": 82,
       "put15Strike": 232.5,
       "put15Price": 3.77,
       "put15Delta": -0.1,
-      "put15Pvi": 128
+      "put15Pvi": 132
     }
   }
 }
