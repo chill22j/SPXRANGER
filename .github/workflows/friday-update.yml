@@ -212,7 +212,7 @@ jobs:
           def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
-                  hist = t.history(period="3mo") # 3-month lookback is stable and ignores weekend noise
+                  hist = t.history(period="3mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
                   
@@ -224,7 +224,7 @@ jobs:
                       avg_ret = sum(log_rets) / len(log_rets)
                       var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
                       ticker_hv = math.sqrt(var) * math.sqrt(252)
-                      if ticker_hv <= 0.05: ticker_hv = 0.05 # Prevent division by zero
+                      if ticker_hv <= 0.05: ticker_hv = 0.05
 
                   expirations = list(t.options)
                   target_exp = expirations[0] if expirations else None
@@ -280,9 +280,8 @@ jobs:
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   
-                  # THE FIX: Use your stable ATM IV calculation, not the skewed 10-Delta IV
-                  call_iv = atm_iv / 100
-                  call_pvi = int(round((call_mark / call_iv) * 10)) if call_iv > 0 else 0
+                  # THE HOLY GRAIL MATH: Original Variance Formula + Historical Volatility
+                  call_pvi = int(round(((call_mark / live_close) / (ticker_hv ** 2)) * 1000))
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -294,9 +293,8 @@ jobs:
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
                   
-                  # THE FIX: Use your stable ATM IV calculation, not the skewed 10-Delta IV
-                  put_iv = atm_iv / 100
-                  put_pvi = int(round((put_mark / put_iv) * 10)) if put_iv > 0 else 0
+                  # THE HOLY GRAIL MATH: Original Variance Formula + Historical Volatility
+                  put_pvi = int(round(((put_mark / live_close) / (ticker_hv ** 2)) * 1000))
 
                   return {
                       "close": range_close,
