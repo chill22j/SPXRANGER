@@ -623,6 +623,8 @@
             '</tr>'
           );
       } else {
+          // --- NEW LINE: Hide SPX and NDX on Options Pricing screen ---
+          if (ticker === 'SPX' || ticker === 'NDX') continue;
           rows.push(
             '<tr>' +
               '<td class="ticker-cell">' + cfg.label + earningsHtml + '</td>' +
