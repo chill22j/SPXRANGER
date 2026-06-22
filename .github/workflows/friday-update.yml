@@ -85,14 +85,13 @@ jobs:
           live_weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
           live_date_str = last_friday_dt.strftime("%Y-%m-%d")
 
-          exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
-          days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
+          today_date = datetime.datetime.utcnow().date()
+          global_dte = (fri_next.date() - today_date).days
 
-          # DYNAMIC DELTA PROGRESSION
-          if days_to_exp >= 4: global_target_delta = 0.15
-          elif days_to_exp == 3: global_target_delta = 0.20
-          elif days_to_exp == 2: global_target_delta = 0.25
-          elif days_to_exp == 1: global_target_delta = 0.30
+          if global_dte >= 4: global_target_delta = 0.15
+          elif global_dte == 3: global_target_delta = 0.20
+          elif global_dte == 2: global_target_delta = 0.25
+          elif global_dte == 1: global_target_delta = 0.30
           else: global_target_delta = 0.50
 
           if frozen_data and "spx" in frozen_data:
