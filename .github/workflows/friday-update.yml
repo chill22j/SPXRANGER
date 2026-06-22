@@ -280,7 +280,7 @@ jobs:
 
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
-                  call_pvi = int(round(call_mark * 100))
+                  call_pvi = int(round((call_mark / ticker_hv252) * 10))
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -291,7 +291,7 @@ jobs:
 
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  put_pvi = int(round(put_mark * 100))
+                  put_pvi = int(round((put_mark / ticker_hv252) * 10))
 
                   return {
                       "close": range_close,
