@@ -24,8 +24,15 @@
   .opm-table th:nth-child(10), .opm-table td:nth-child(10) { border-right: 2px solid #22c55e; }
 
   /* --- THE SHARED CENTER LINE (Fixing the overlap) --- */
-  .opm-table th:nth-child(6), .opm-table td:nth-child(6) { box-shadow: inset -2px 0 0 0 #ef4444; border-right: none; }
-  .opm-table th:nth-child(7), .opm-table td:nth-child(7) { box-shadow: inset 2px 0 0 0 #22c55e; border-left: none; }
+  .opm-table th:nth-child(6), .opm-table td:nth-child(6) { position: relative; border-right: none; }
+  .opm-table th:nth-child(6)::after, .opm-table td:nth-child(6)::after { 
+      content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 2px; background-color: #ef4444; z-index: 10; 
+  }
+
+  .opm-table th:nth-child(7), .opm-table td:nth-child(7) { position: relative; border-left: none; }
+  .opm-table th:nth-child(7)::before, .opm-table td:nth-child(7)::before { 
+      content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 2px; background-color: #22c55e; z-index: 10; 
+  }
   
   /* Big Master Tabs at Top */
   .main-tabs { display:flex; gap:12px; margin-bottom:16px; }
