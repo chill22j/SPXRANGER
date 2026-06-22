@@ -212,19 +212,19 @@ jobs:
           def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
-                  hist = t.history(period="1y") # Changed to 1 Year Lookback
+                  hist = t.history(period="1mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
                   
-                  # Calculate Long-Term Stock-Specific HV252
+                  # Calculate 1-Month Historical Volatility (HV)
                   valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c)]
-                  ticker_hv252 = 0.20
+                  ticker_hv = 0.20
                   if len(valid_closes) > 2:
                       log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1, len(valid_closes))]
                       avg_ret = sum(log_rets) / len(log_rets)
                       var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
-                      ticker_hv252 = math.sqrt(var) * math.sqrt(252)
-                      if ticker_hv252 <= 0.05: ticker_hv252 = 0.05 # Solid floor to prevent math explosions
+                      ticker_hv = math.sqrt(var) * math.sqrt(252)
+                      if ticker_hv <= 0.05: ticker_hv = 0.05 # Prevent division by zero
 
                   expirations = list(t.options)
                   target_exp = expirations[0] if expirations else None
@@ -241,7 +241,6 @@ jobs:
 
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
 
-                  # A. FREEZE RANGE DATA
                   if frozen_stock_data:
                       range_close = frozen_stock_data.get("close", live_close)
                       atm_strike = frozen_stock_data.get("atmStrike")
@@ -270,7 +269,7 @@ jobs:
                                       earnings_this_week = True; break
                       except Exception: pass
 
-                 # B. CALCULATE LIVE OPM
+                  # B. CALCULATE LIVE OPM
                   best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
                   for _, row in calls.iterrows():
                       if row['impliedVolatility'] <= 0: continue
@@ -280,8 +279,9 @@ jobs:
 
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
-                  call_iv = best_call['impliedVolatility']
-                  call_pvi = int(round(((call_mark / live_close) / (call_iv ** 2)) * 1000)) if call_iv > 0 else 0
+                  
+                  # PVI Logic: (Normalized Premium) / Historical Volatility
+                  call_pvi = int(round(((call_mark / live_close) / ticker_hv) * 10000))
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -292,9 +292,9 @@ jobs:
 
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  put_iv = best_put['impliedVolatility']
-                  put_pvi = int(round(((put_mark / live_close) / (put_iv ** 2)) * 1000)) if put_iv > 0 else 0
-
+                  
+                  # PVI Logic: (Normalized Premium) / Historical Volatility
+                  put_pvi = int(round(((put_mark / live_close) / ticker_hv) * 10000))
 
                   return {
                       "close": range_close,
