@@ -212,19 +212,20 @@ jobs:
           def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
+                  
+                  # 1. Fetch 3 months of history to calculate a stable, earnings-proof baseline Volatility
                   hist = t.history(period="3mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
                   
-                  # Calculate 3-Month Historical Volatility (HV)
                   valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c)]
-                  ticker_hv = 0.20
+                  ticker_hv = 0.20 # Fallback
                   if len(valid_closes) > 2:
                       log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1, len(valid_closes))]
                       avg_ret = sum(log_rets) / len(log_rets)
                       var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
                       ticker_hv = math.sqrt(var) * math.sqrt(252)
-                      if ticker_hv <= 0.05: ticker_hv = 0.05
+                      if ticker_hv <= 0.05: ticker_hv = 0.05 # Prevent division by zero on dead stocks
 
                   expirations = list(t.options)
                   target_exp = expirations[0] if expirations else None
@@ -280,7 +281,7 @@ jobs:
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   
-                  # THE HOLY GRAIL MATH: Original Variance Formula + Historical Volatility
+                  # THE FIX: Your Original Formula + Stable Historical Volatility
                   call_pvi = int(round(((call_mark / live_close) / (ticker_hv ** 2)) * 1000))
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
@@ -293,7 +294,7 @@ jobs:
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
                   
-                  # THE HOLY GRAIL MATH: Original Variance Formula + Historical Volatility
+                  # THE FIX: Your Original Formula + Stable Historical Volatility
                   put_pvi = int(round(((put_mark / live_close) / (ticker_hv ** 2)) * 1000))
 
                   return {
