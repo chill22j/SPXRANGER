@@ -2,7 +2,7 @@ name: Daily Market Update
 
 on:
   schedule:
-    - cron: '0 14 * * 1-6' # Runs Mon-Sat at 10:00 AM EDT
+    - cron: '47 13 * * 1-6'
   workflow_dispatch:
 
 jobs:
