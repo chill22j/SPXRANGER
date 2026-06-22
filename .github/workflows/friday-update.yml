@@ -22,11 +22,9 @@ jobs:
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-          # 1. Check if it's the weekend run (Saturday = 5)
           today_weekday = datetime.datetime.utcnow().weekday()
           is_weekend_run = today_weekday >= 5
           
-          # 2. Load Frozen Ranges if it's a weekday
           frozen_data = None
           if not is_weekend_run and os.path.exists("data/market.json"):
               try:
@@ -47,7 +45,6 @@ jobs:
                       time.sleep(3)
               raise Exception(f"Failed to fetch {symbol}")
 
-          # Fetch Baseline Charts (Always needed for date math)
           spx_data = fetch_chart("%5EGSPC", "3mo")
           vix_data = fetch_chart("%5EVIX", "3mo")
           ndx_data = fetch_chart("%5ENDX", "3mo")
@@ -81,7 +78,6 @@ jobs:
           
           target_date = last_friday_dt.strftime("%Y-%m-%d")
 
-          # Set up week math
           days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
           if last_trading_dt.weekday() == 0: days_to_mon = 7
           mon = last_trading_dt + datetime.timedelta(days=days_to_mon)
@@ -89,7 +85,6 @@ jobs:
           live_weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
           live_date_str = last_friday_dt.strftime("%Y-%m-%d")
 
-          # --- 3. DTE-Based Rolling Delta Calculation ---
           today_date = datetime.datetime.utcnow().date()
           global_dte = (fri_next.date() - today_date).days
           
@@ -99,7 +94,6 @@ jobs:
           elif global_dte == 1: global_target_delta = 0.25
           else: global_target_delta = 0.30
 
-          # --- 4. FREEZE OR CALCULATE GLOBAL RANGES ---
           if frozen_data and "spx" in frozen_data:
               spx = frozen_data.get("spx")
               vix = frozen_data.get("vix")
@@ -129,7 +123,6 @@ jobs:
               qqq_top_calls = frozen_data.get("qqqOptions", {}).get("topCalls", [])
               qqq_options_expiry = frozen_data.get("qqqOptions", {}).get("expiry")
           else:
-              # Calculate Live
               spx = round(spx_closes[last_friday_idx], 2)
               last_friday_vix = vix_closes[-1]
               for i in range(len(vix_timestamps)-1, -1, -1):
@@ -216,13 +209,22 @@ jobs:
               d1 = (math.log(spot / strike) + (0.5 * sigma ** 2) * t) / (sigma * math.sqrt(t))
               return cdf_normal(d1) if is_call else (cdf_normal(d1) - 1.0)
 
-          # --- 5. INDIVIDUAL TICKERS (Ranges = Frozen, OPM = Live) ---
           def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
                   hist = t.history(period="1mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
+                  
+                  # Calculate Stock-Specific HV20
+                  valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c)]
+                  ticker_hv20 = 0.20
+                  if len(valid_closes) > 2:
+                      log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1, len(valid_closes))]
+                      avg_ret = sum(log_rets) / len(log_rets)
+                      var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
+                      ticker_hv20 = math.sqrt(var) * math.sqrt(252)
+                      if ticker_hv20 <= 0: ticker_hv20 = 0.01
 
                   expirations = list(t.options)
                   target_exp = expirations[0] if expirations else None
@@ -268,7 +270,7 @@ jobs:
                                       earnings_this_week = True; break
                       except Exception: pass
 
-                  # B. CALCULATE LIVE OPM (Always uses live data & rolling delta)
+                  # B. CALCULATE LIVE OPM
                   best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
                   for _, row in calls.iterrows():
                       if row['impliedVolatility'] <= 0: continue
@@ -278,6 +280,7 @@ jobs:
 
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
+                  call_pvi = round((best_call['impliedVolatility'] / ticker_hv20) * 100)
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -288,6 +291,7 @@ jobs:
 
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
+                  put_pvi = round((best_put['impliedVolatility'] / ticker_hv20) * 100)
 
                   return {
                       "close": range_close,
@@ -299,9 +303,11 @@ jobs:
                       "call15Strike": float(best_call['strike']),
                       "call15Price": round(call_mark, 2),
                       "call15Delta": round(best_call_delta, 2),
+                      "call15Pvi": call_pvi,
                       "put15Strike": float(best_put['strike']),
                       "put15Price": round(put_mark, 2),
-                      "put15Delta": round(best_put_delta, 2)
+                      "put15Delta": round(best_put_delta, 2),
+                      "put15Pvi": put_pvi
                   }
               except Exception as e:
                   print(f"Error {yf_symbol}: {e}")
