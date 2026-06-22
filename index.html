@@ -13,23 +13,54 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  /* --- ISOLATE THE TABLE TO PREVENT BORDER BLEEDING --- */
+  
+  /* --- REVERT TO NORMAL COLLAPSE --- */
   .opm-table {
-    border-collapse: separate !important;
-    border-spacing: 0;
+    border-collapse: collapse !important;
   }
 
-  /* --- RED BOX FOR PUTS (Cols 3-6) --- */
+  /* --- OUTER BORDERS (Puts: Cols 3-6) --- */
   .opm-table thead tr th:nth-child(n+3):nth-child(-n+6) { border-top: 2px solid #ef4444; }
   .opm-table tbody tr:last-child td:nth-child(n+3):nth-child(-n+6) { border-bottom: 2px solid #ef4444; }
   .opm-table th:nth-child(3), .opm-table td:nth-child(3) { border-left: 2px solid #ef4444; }
-  .opm-table th:nth-child(6), .opm-table td:nth-child(6) { border-right: 2px solid #ef4444; }
 
-  /* --- GREEN BOX FOR CALLS (Cols 7-10) --- */
+  /* --- OUTER BORDERS (Calls: Cols 7-10) --- */
   .opm-table thead tr th:nth-child(n+7):nth-child(-n+10) { border-top: 2px solid #22c55e; }
   .opm-table tbody tr:last-child td:nth-child(n+7):nth-child(-n+10) { border-bottom: 2px solid #22c55e; }
   .opm-table th:nth-child(10), .opm-table td:nth-child(10) { border-right: 2px solid #22c55e; }
-  .opm-table th:nth-child(7), .opm-table td:nth-child(7) { border-left: 2px solid #22c55e; }
+
+  /* --- THE SHARED CENTER LINE (Absolute Front Layer) --- */
+  /* 1. Make cells 6 and 7 relative anchors to hold the lines */
+  .opm-table th:nth-child(6), .opm-table td:nth-child(6),
+  .opm-table th:nth-child(7), .opm-table td:nth-child(7) { 
+      position: relative; 
+      border-right: none; 
+      border-left: none; 
+  }
+  
+  /* 2. Draw Red line absolutely over everything on the right of Col 6 */
+  .opm-table th:nth-child(6)::after, .opm-table td:nth-child(6)::after { 
+      content: ''; 
+      position: absolute; 
+      top: -1px;   /* Pulls the line slightly up to cover row borders */
+      bottom: -1px; /* Pulls the line slightly down to cover row borders */
+      right: 0; 
+      width: 2px; 
+      background-color: #ef4444; 
+      z-index: 99; /* Forces the line to the absolute front */
+  }
+
+  /* 3. Draw Green line absolutely over everything on the left of Col 7 */
+  .opm-table th:nth-child(7)::before, .opm-table td:nth-child(7)::before { 
+      content: ''; 
+      position: absolute; 
+      top: -1px; 
+      bottom: -1px; 
+      left: 0; 
+      width: 2px; 
+      background-color: #22c55e; 
+      z-index: 99; 
+  }
   
   /* Big Master Tabs at Top */
   .main-tabs { display:flex; gap:12px; margin-bottom:16px; }
