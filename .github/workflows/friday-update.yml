@@ -212,20 +212,24 @@ jobs:
           def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
                   t = yf.Ticker(yf_symbol)
-                  
-                  # 1. Fetch 3 months of history to calculate a stable, earnings-proof baseline Volatility
                   hist = t.history(period="3mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
                   
-                  valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c)]
-                  ticker_hv = 0.20 # Fallback
+                  # 1. Bulletproof Historical Volatility (HV)
+                  valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c) and c > 0]
+                  ticker_hv = 0.20
                   if len(valid_closes) > 2:
-                      log_rets = [math.log(valid_closes[i]/valid_closes[i-1]) for i in range(1, len(valid_closes))]
-                      avg_ret = sum(log_rets) / len(log_rets)
-                      var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
-                      ticker_hv = math.sqrt(var) * math.sqrt(252)
-                      if ticker_hv <= 0.05: ticker_hv = 0.05 # Prevent division by zero on dead stocks
+                      log_rets = []
+                      for i in range(1, len(valid_closes)):
+                          ratio = valid_closes[i] / valid_closes[i-1]
+                          if 0.5 < ratio < 2.0: 
+                              log_rets.append(math.log(ratio))
+                      if len(log_rets) > 1:
+                          avg_ret = sum(log_rets) / len(log_rets)
+                          var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
+                          ticker_hv = math.sqrt(var) * math.sqrt(252)
+                          if ticker_hv <= 0.05: ticker_hv = 0.05
 
                   expirations = list(t.options)
                   target_exp = expirations[0] if expirations else None
@@ -235,6 +239,13 @@ jobs:
 
                   exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
                   days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
+
+                  # DYNAMIC DELTA PROGRESSION
+                  if days_to_exp >= 4: global_target_delta = 0.15
+                  elif days_to_exp == 3: global_target_delta = 0.20
+                  elif days_to_exp == 2: global_target_delta = 0.25
+                  elif days_to_exp == 1: global_target_delta = 0.30
+                  else: global_target_delta = 0.50
 
                   chain = t.option_chain(target_exp)
                   calls, puts = chain.calls, chain.puts
@@ -270,7 +281,12 @@ jobs:
                                       earnings_this_week = True; break
                       except Exception: pass
 
-                  # B. CALCULATE LIVE OPM
+                  # B. CALCULATE LIVE YIELD-ON-VARIANCE (YoV)
+                  # Math Step 1: Calculate the true Expected Move (%) over the remaining days
+                  expected_move = ticker_hv * math.sqrt(days_to_exp / 252)
+                  if expected_move <= 0: expected_move = 0.001 # Prevent division by zero
+
+                  # --- CALLS ---
                   best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
                   for _, row in calls.iterrows():
                       if row['impliedVolatility'] <= 0: continue
@@ -281,9 +297,11 @@ jobs:
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
                   
-                  # THE FIX: Your actual original math + 3-month Historical Volatility
-                  call_pvi = int(round((call_mark / ticker_hv) * 10))
+                  # Math Step 2: Yield / Expected Move
+                  call_yield = call_mark / best_call['strike']
+                  call_pvi = int(round((call_yield / expected_move) * 1000))
 
+                  # --- PUTS ---
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
                       if row['impliedVolatility'] <= 0: continue
@@ -294,8 +312,9 @@ jobs:
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
                   
-                  # THE FIX: Your actual original math + 3-month Historical Volatility
-                  put_pvi = int(round((put_mark / ticker_hv) * 10))
+                  # Math Step 2: Yield / Expected Move
+                  put_yield = put_mark / best_put['strike']
+                  put_pvi = int(round((put_yield / expected_move) * 1000))
 
                   return {
                       "close": range_close,
