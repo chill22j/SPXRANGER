@@ -480,9 +480,11 @@
             <th>P STRIKE</th>
             <th>P DELTA</th>
             <th>P PRICE</th>
+            <th>P RATING</th>
             <th>C STRIKE</th>
             <th>C DELTA</th>
             <th>C PRICE</th>
+            <th>C RATING</th>
           </tr>
         `;
     }
@@ -511,6 +513,8 @@
         stretch = marketData[cfg.stretchField];
       }
 
+      let cPvi = '—', pPvi = '—';
+
       // 2. Fetch Options Data for EVERY ticker (Indices included)
       if (marketData.individuals && marketData.individuals[ticker]) {
         const stockData = marketData.individuals[ticker];
@@ -519,24 +523,26 @@
             cStrike = stockData.call15Strike;
             cPrice = stockData.call15Price.toFixed(2);
             cDelta = stockData.call15Delta.toFixed(2);
+            cPvi = stockData.call15Pvi || '—';
             
             pStrike = stockData.put15Strike;
             pPrice = stockData.put15Price.toFixed(2);
             pDelta = stockData.put15Delta.toFixed(2);
+            pPvi = stockData.put15Pvi || '—';
 
             const isBaseIndex = ['SPX', 'NDX', 'SPY', 'QQQ'].includes(ticker);
             const baselineTicker = stockData.baseline; 
             const baseData = marketData.individuals[baselineTicker];
 
-            if (!isBaseIndex && baseData && baseData.call15Price && baseData.put15Price) {
-                const callRatio = stockData.call15Price / baseData.call15Price;
+            if (!isBaseIndex && baseData && baseData.call15Pvi && baseData.put15Pvi) {
+                const callRatio = stockData.call15Pvi / baseData.call15Pvi;
                 if (callRatio >= 2.0) cClass = 'val-expensive';
-                else if (callRatio >= 1.5) cClass = 'val-elevated';
+                else if (callRatio >= 1.0) cClass = 'val-elevated';
                 else if (callRatio <= 0.5) cClass = 'val-cheap';
 
-                const putRatio = stockData.put15Price / baseData.put15Price;
+                const putRatio = stockData.put15Pvi / baseData.put15Pvi;
                 if (putRatio >= 2.0) pClass = 'val-expensive';
-                else if (putRatio >= 1.5) pClass = 'val-elevated';
+                else if (putRatio >= 1.0) pClass = 'val-elevated';
                 else if (putRatio <= 0.5) pClass = 'val-cheap';
             }
         }
@@ -571,10 +577,12 @@
               '<td class="close-cell">' + closeDisplay + '</td>' +
               '<td class="opt-cell">' + pStrike + '</td>' +
               '<td class="opt-cell">' + pDelta + '</td>' +
-              '<td class="opt-cell ' + pClass + '">' + pPrice + '</td>' +
+              '<td class="opt-cell">' + pPrice + '</td>' +
+              '<td class="opt-cell ' + pClass + '">' + pPvi + '</td>' +
               '<td class="opt-cell">' + cStrike + '</td>' +
               '<td class="opt-cell">' + cDelta + '</td>' +
-              '<td class="opt-cell ' + cClass + '">' + cPrice + '</td>' +
+              '<td class="opt-cell">' + cPrice + '</td>' +
+              '<td class="opt-cell ' + cClass + '">' + cPvi + '</td>' +
             '</tr>'
           );
       }
@@ -753,23 +761,18 @@
         const baselineTicker = data.baseline;
         const baseData = marketData.individuals[baselineTicker];
         
-        if (!isBaseIndex && baseData && baseData.put15Price) {
-            const putRatio = data.put15Price / baseData.put15Price;
+        if (!isBaseIndex && baseData && baseData.put15Pvi) {
+            const putRatio = data.put15Pvi / baseData.put15Pvi;
             
             let badgeClass = "badge-fair";
-            if (putRatio >= 2.0) {
-                badgeClass = "badge-expensive";
-            } else if (putRatio >= 1.5) {
-                badgeClass = "badge-elevated";
-            } else if (putRatio <= 0.5) {
-                badgeClass = "badge-cheap";
-            }
+            if (putRatio >= 2.0) badgeClass = "badge-expensive";
+            else if (putRatio >= 1.0) badgeClass = "badge-elevated";
+            else if (putRatio <= 0.5) badgeClass = "badge-cheap";
             
             const deltaLabel = marketData.targetDelta ? Math.round(marketData.targetDelta * 100) : 15;
-            
             valuationHtml = `<div class="valuation-container">
-              <span>${deltaLabel}Δ Put Relative Value:</span>
-              <span class="badge ${badgeClass}">${Math.round(putRatio * 100)}% of ${baselineTicker}</span>
+              <span>${deltaLabel}Δ Put PVI Score:</span>
+              <span class="badge ${badgeClass}">${data.put15Pvi} (${Math.round(putRatio * 100)}% of ${baselineTicker})</span>
             </div>`;
         }
     }
