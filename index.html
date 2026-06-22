@@ -13,25 +13,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  /* --- RED BOX FOR PUTS (Columns 3 through 6) --- */
-/* Left border on P STRIKE */
-th:nth-child(3), td:nth-child(3) { border-left: 2px solid #ef4444; }
-/* Right border on P RATING */
-th:nth-child(6), td:nth-child(6) { border-right: 2px solid #ef4444; }
-/* Top border on the headers */
-thead tr th:nth-child(n+3):nth-child(-n+6) { border-top: 2px solid #ef4444; }
-/* Bottom border on the last row of data */
-tbody tr:last-child td:nth-child(n+3):nth-child(-n+6) { border-bottom: 2px solid #ef4444; }
+  /* --- RED BOX FOR PUTS (Cols 3-6) --- */
+  .opm-table thead tr th:nth-child(n+3):nth-child(-n+6) { border-top: 2px solid #ef4444; }
+  .opm-table tbody tr:last-child td:nth-child(n+3):nth-child(-n+6) { border-bottom: 2px solid #ef4444; }
+  .opm-table th:nth-child(3), .opm-table td:nth-child(3) { border-left: 2px solid #ef4444; }
 
-/* --- GREEN BOX FOR CALLS (Columns 7 through 10) --- */
-/* Left border on C STRIKE */
-th:nth-child(7), td:nth-child(7) { border-left: 2px solid #22c55e; }
-/* Right border on C RATING */
-th:nth-child(10), td:nth-child(10) { border-right: 2px solid #22c55e; }
-/* Top border on the headers */
-thead tr th:nth-child(n+7):nth-child(-n+10) { border-top: 2px solid #22c55e; }
-/* Bottom border on the last row of data */
-tbody tr:last-child td:nth-child(n+7):nth-child(-n+10) { border-bottom: 2px solid #22c55e; }
+  /* --- GREEN BOX FOR CALLS (Cols 7-10) --- */
+  .opm-table thead tr th:nth-child(n+7):nth-child(-n+10) { border-top: 2px solid #22c55e; }
+  .opm-table tbody tr:last-child td:nth-child(n+7):nth-child(-n+10) { border-bottom: 2px solid #22c55e; }
+  .opm-table th:nth-child(10), .opm-table td:nth-child(10) { border-right: 2px solid #22c55e; }
+
+  /* --- THE SHARED CENTER LINE (Fixing the overlap) --- */
+  .opm-table th:nth-child(6), .opm-table td:nth-child(6) { box-shadow: inset -2px 0 0 0 #ef4444; border-right: none; }
+  .opm-table th:nth-child(7), .opm-table td:nth-child(7) { box-shadow: inset 2px 0 0 0 #22c55e; border-left: none; }
+  
   /* Big Master Tabs at Top */
   .main-tabs { display:flex; gap:12px; margin-bottom:16px; }
   .main-tab-btn { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--muted2); font-family:var(--font-mono); font-size:15px; font-weight:600; letter-spacing:0.12em; padding:16px; cursor:pointer; border-radius:6px; transition:all 0.15s; text-transform:uppercase; }
@@ -482,7 +477,9 @@ tbody tr:last-child td:nth-child(n+7):nth-child(-n+10) { border-bottom: 2px soli
     }
 
     // Swap Table Headers based on mode
+    const tableEl = document.getElementById('summaryTable');
     if (currentTicker === 'RANGES') {
+        tableEl.classList.remove('opm-table');
         head.innerHTML = `
           <tr>
             <th>TICKER</th>
@@ -492,6 +489,7 @@ tbody tr:last-child td:nth-child(n+7):nth-child(-n+10) { border-bottom: 2px soli
           </tr>
         `;
     } else {
+        tableEl.classList.add('opm-table');
         head.innerHTML = `
           <tr>
             <th>TICKER</th>
