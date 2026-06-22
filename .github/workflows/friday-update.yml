@@ -280,7 +280,8 @@ jobs:
 
                   if best_call is None: best_call = calls.iloc[0]
                   call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
-                  call_pvi = round((best_call['impliedVolatility'] / ticker_hv20) * 100)
+                  call_iv = best_call['impliedVolatility']
+                  call_pvi = round(((call_mark / live_close) / call_iv) * 1000000) if call_iv > 0 else 0
 
                   best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
                   for _, row in puts.iterrows():
@@ -291,7 +292,8 @@ jobs:
 
                   if best_put is None: best_put = puts.iloc[0]
                   put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  put_pvi = round((best_put['impliedVolatility'] / ticker_hv20) * 100)
+                  put_iv = best_put['impliedVolatility']
+                  put_pvi = round(((put_mark / live_close) / put_iv) * 1000000) if put_iv > 0 else 0
 
                   return {
                       "close": range_close,
