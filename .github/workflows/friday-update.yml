@@ -88,11 +88,11 @@ jobs:
           today_date = datetime.datetime.utcnow().date()
           global_dte = (fri_next.date() - today_date).days
           
-          if global_dte >= 4: global_target_delta = 0.10
-          elif global_dte == 3: global_target_delta = 0.15
-          elif global_dte == 2: global_target_delta = 0.20
-          elif global_dte == 1: global_target_delta = 0.25
-          else: global_target_delta = 0.30
+          if global_dte >= 4: global_target_delta = 0.15
+          elif global_dte == 3: global_target_delta = 0.20
+          elif global_dte == 2: global_target_delta = 0.25
+          elif global_dte == 1: global_target_delta = 0.30
+          else: global_target_delta = 0.50
 
           if frozen_data and "spx" in frozen_data:
               spx = frozen_data.get("spx")
