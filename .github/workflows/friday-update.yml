@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '47 13 * * 1-6'
   workflow_dispatch:
+  repository_dispatch:
+    types: [force_update]
 
 jobs:
   update-market-data:
