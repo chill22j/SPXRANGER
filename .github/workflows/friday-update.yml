@@ -301,7 +301,16 @@ jobs:
                   
                   if chain is None or chain.empty:
                       print(f"No valid options found in OPRA feed for {theta_sym}")
-                      return None
+                      # Return the frozen data so the Ranges page stays alive, even if Options fail
+                      return {
+                          "close": range_close,
+                          "livePrice": live_close,
+                          "atmStrike": atm_strike,
+                          "straddleMove": straddle_move,
+                          "atmIV": atm_iv,
+                          "earningsThisWeek": earnings_this_week,
+                          "baseline": baseline_ticker
+                      }
                       
                   # Safely separate calls and puts using pure Delta math (avoids string matching bugs)
                   calls = chain[chain['delta'] > 0].copy()
