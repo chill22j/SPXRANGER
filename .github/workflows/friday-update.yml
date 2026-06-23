@@ -30,7 +30,7 @@ jobs:
         run: |
           # Download and boot the terminal in the background
           curl -sL -o ThetaTerminal.jar https://download-stable.thetadata.us
-          nohup java -jar ThetaTerminal.jar $THETADATA_USERNAME $THETADATA_PASSWORD > terminal.log 2>&1 &
+          nohup java -jar ThetaTerminal.jar $THETA_USERNAME $THETA_PASSWORD > terminal.log 2>&1 &
           
           echo "Waiting 15 seconds for OPRA connection to establish..."
           sleep 15
@@ -43,7 +43,7 @@ jobs:
           from thetadata import ThetaClient
 
           # Connect using Explicit Credentials and force standard Pandas dataframes
-          client = ThetaClient(email=os.environ["THETADATA_USERNAME"], password=os.environ["THETADATA_PASSWORD"], dataframe_type="pandas")
+          client = ThetaClient(email=os.environ["THETA_USERNAME"], password=os.environ["THETA_PASSWORD"], dataframe_type="pandas")
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
