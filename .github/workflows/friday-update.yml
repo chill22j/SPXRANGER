@@ -326,6 +326,7 @@ jobs:
 
                   return {
                       "close": range_close,
+                      "livePrice": live_close,
                       "atmStrike": atm_strike,
                       "straddleMove": straddle_move,
                       "atmIV": atm_iv,
