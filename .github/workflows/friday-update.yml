@@ -35,7 +35,7 @@ jobs:
           echo "Waiting 15 seconds for OPRA connection to establish..."
           sleep 15
           
-          pip install yfinance lxml thetadata pandas --break-system-packages -q
+          pip install yfinance lxml thetadata pandas python-dotenv --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
