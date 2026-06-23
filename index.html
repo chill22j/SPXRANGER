@@ -449,7 +449,7 @@
       if (!res.ok) throw new Error('not found');
       marketData = await res.json();
       const updated = marketData.updated
-        ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + new Date(marketData.updated).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
         : (marketData.date || '');
       status.className = 'fetch-status ok';
       status.textContent = '✓ Auto-loaded as of ' + updated;
@@ -528,7 +528,7 @@
         head.innerHTML = `
           <tr>
             <th>TICKER</th>
-            <th>PREV CLOSE</th>
+            <th>CURRENT PRICE</th>
             <th>P STRIKE</th>
             <th>P DELTA</th>
             <th>P PRICE</th>
@@ -643,11 +643,6 @@
     }
     body.innerHTML = rows.join('');
 
-    const updated = marketData.updated
-      ? new Date(marketData.updated).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-      : (marketData.date || '');
-    status.textContent = '✓ Auto-loaded as of ' + updated;
-  }
 
   function renderTicker() {
     const cfg = TICKER_CONFIG[currentTicker];
