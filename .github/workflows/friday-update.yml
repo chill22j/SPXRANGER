@@ -15,19 +15,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 1. Install Java 21 (Required for the Theta Terminal)
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # 2. Boot Terminal & Run Python
       - name: Fetch market data and calculate max pain
         env:
           THETA_USERNAME: ${{ secrets.THETA_USERNAME }}
           THETA_PASSWORD: ${{ secrets.THETA_PASSWORD }}
         run: |
+          # Download and boot the terminal in the background
+          curl -sL -o ThetaTerminal.jar https://download-stable.thetadata.us
+          nohup java -jar ThetaTerminal.jar $THETADATA_USERNAME $THETADATA_PASSWORD > terminal.log 2>&1 &
+          
+          echo "Waiting 15 seconds for OPRA connection to establish..."
+          sleep 15
+          
           pip install yfinance lxml thetadata pandas --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
           import pandas as pd
-          from thetadata import ThetaClient, OptionReqType, OptionRight, DateRange
+          from thetadata import ThetaClient
 
-          client = ThetaClient()
+          # Connect using Explicit Credentials and force standard Pandas dataframes
+          client = ThetaClient(email=os.environ["THETADATA_USERNAME"], password=os.environ["THETADATA_PASSWORD"], dataframe_type="pandas")
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -212,7 +228,7 @@ jobs:
               if ndx is not None: ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
               if qqq is not None: qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
 
-          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data, req_date, theta_client):
+          def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data, theta_client):
               try:
                   t = yf.Ticker(yf_symbol)
                   hist = t.history(period="3mo")
@@ -270,20 +286,25 @@ jobs:
                       except Exception: pass
 
                   # --- PURE THETA DATA OPRA LOGIC ---
-                  chain = theta_client.get_options(
-                      req=OptionReqType.EOD,
-                      root=yf_symbol,
-                      exp=exp_dt.date(),
-                      date_range=DateRange(req_date, req_date)
+                  # Use the clean ticker symbols (SPX, not ^SPX) required by Theta Data
+                  theta_sym = display_name if display_name in ["SPX", "NDX"] else yf_symbol
+                  
+                  # The new v1.x SDK method for full chain snapshots
+                  chain = theta_client.option_snapshot_greeks_all(
+                      symbol=theta_sym,
+                      expiration=exp_dt.date(),
+                      strike="*",
+                      right="both"
                   )
                   
-                  calls = chain[chain['right'] == OptionRight.CALL].copy()
-                  puts = chain[chain['right'] == OptionRight.PUT].copy()
-                  
-                  if calls.empty or puts.empty:
-                      print(f"No valid options found in OPRA feed for {yf_symbol}")
+                  if chain is None or chain.empty:
+                      print(f"No valid options found in OPRA feed for {theta_sym}")
                       return None
                       
+                  # Safely separate calls and puts using pure Delta math (avoids string matching bugs)
+                  calls = chain[chain['delta'] > 0].copy()
+                  puts = chain[chain['delta'] < 0].copy()
+                  
                   if not frozen_stock_data:
                       calls['dist'] = (calls['strike'] - range_close).abs()
                       puts['dist'] = (puts['strike'] - range_close).abs()
@@ -291,8 +312,15 @@ jobs:
                       atm_put = puts.loc[puts['dist'].idxmin()]
                       
                       atm_strike = float(atm_call['strike'])
-                      straddle_move = round((float(atm_call['close']) + float(atm_put['close'])) * 0.85, 2)
-                      atm_iv = round(((float(atm_call['iv']) + float(atm_put['iv'])) / 2) * 100, 2)
+                      
+                      # Safely extract the price and IV columns regardless of ThetaData's exact column naming
+                      c_price = float(atm_call['close']) if 'close' in atm_call else (float(atm_call['bid']) + float(atm_call['ask'])) / 2
+                      p_price = float(atm_put['close']) if 'close' in atm_put else (float(atm_put['bid']) + float(atm_put['ask'])) / 2
+                      c_iv = float(atm_call['iv']) if 'iv' in atm_call else float(atm_call.get('implied_vol', 0))
+                      p_iv = float(atm_put['iv']) if 'iv' in atm_put else float(atm_put.get('implied_vol', 0))
+                      
+                      straddle_move = round((c_price + p_price) * 0.85, 2)
+                      atm_iv = round(((c_iv + p_iv) / 2) * 100, 2)
 
                   calls['delta_diff'] = (calls['delta'].abs() - global_target_delta).abs()
                   best_call = calls.loc[calls['delta_diff'].idxmin()]
@@ -301,12 +329,12 @@ jobs:
                   best_put = puts.loc[puts['delta_diff'].idxmin()]
                   
                   best_call_strike = float(best_call['strike'])
-                  best_call_price = float(best_call['close'])
-                  best_call_delta = float(best_call['delta'])
-                  
                   best_put_strike = float(best_put['strike'])
-                  best_put_price = float(best_put['close'])
+                  best_call_delta = float(best_call['delta'])
                   best_put_delta = float(best_put['delta'])
+                  
+                  best_call_price = float(best_call['close']) if 'close' in best_call else (float(best_call['bid']) + float(best_call['ask'])) / 2
+                  best_put_price = float(best_put['close']) if 'close' in best_put else (float(best_put['bid']) + float(best_put['ask'])) / 2
 
                   # CALCULATE LIVE YIELD-ON-VARIANCE (YoV)
                   expected_move = ticker_hv * math.sqrt(days_to_exp / 252)
@@ -351,13 +379,11 @@ jobs:
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
-          req_dt = last_trading_dt.date()
-          with client.connect():
-              for display_name, yf_sym in ticker_map.items():
-                  f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
-                  individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines, f_data, req_dt, client)
-                  print(f"{display_name} Data Pulled")
-                  time.sleep(0.5) 
+          for display_name, yf_sym in ticker_map.items():
+              f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
+              individual_data[display_name] = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data, client)
+              print(f"{display_name} Data Pulled")
+              time.sleep(0.5) 
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
