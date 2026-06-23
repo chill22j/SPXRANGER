@@ -16,11 +16,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Fetch market data and calculate max pain
+        env:
+          THETA_USERNAME: ${{ secrets.THETA_USERNAME }}
+          THETA_PASSWORD: ${{ secrets.THETA_PASSWORD }}
         run: |
-          pip install yfinance lxml --break-system-packages -q
+          pip install yfinance lxml thetadata pandas --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
+          import pandas as pd
+          from thetadata import ThetaClient, OptionReqType, OptionRight, DateRange
+
+          client = ThetaClient()
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -80,13 +87,11 @@ jobs:
           
           target_date = last_friday_dt.strftime("%Y-%m-%d")
 
-          # CORRECTED: Only look ahead to next week if it is a weekend run
           if is_weekend_run:
               days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
               if last_trading_dt.weekday() == 0: days_to_mon = 7
               mon = last_trading_dt + datetime.timedelta(days=days_to_mon)
           else:
-              # Mid-week run: Anchor to the CURRENT week's Monday
               mon = last_trading_dt - datetime.timedelta(days=last_trading_dt.weekday())
               
           fri_next = mon + datetime.timedelta(days=4)
@@ -207,24 +212,13 @@ jobs:
               if ndx is not None: ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
               if qqq is not None: qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
 
-          def cdf_normal(x):
-              return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
-
-          def compute_delta(spot, strike, iv_pct, days_to_exp, is_call=True):
-              if iv_pct <= 0 or days_to_exp <= 0 or spot <= 0 or strike <= 0: return 0.5
-              t = days_to_exp / 365.0
-              sigma = iv_pct / 100.0
-              d1 = (math.log(spot / strike) + (0.5 * sigma ** 2) * t) / (sigma * math.sqrt(t))
-              return cdf_normal(d1) if is_call else (cdf_normal(d1) - 1.0)
-
-          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data):
+          def compute_individual_metrics(yf_symbol, mon_dt, index_baselines, frozen_stock_data, req_date, theta_client):
               try:
                   t = yf.Ticker(yf_symbol)
                   hist = t.history(period="3mo")
                   if hist.empty: return None
                   live_close = round(hist["Close"].iloc[-1], 2)
                   
-                  # 1. Bulletproof Historical Volatility (HV)
                   valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c) and c > 0]
                   ticker_hv = 0.20
                   if len(valid_closes) > 2:
@@ -248,38 +242,24 @@ jobs:
                   exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
                   days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
 
-                  # DYNAMIC DELTA PROGRESSION
                   if days_to_exp >= 4: global_target_delta = 0.15
                   elif days_to_exp == 3: global_target_delta = 0.20
                   elif days_to_exp == 2: global_target_delta = 0.25
                   elif days_to_exp == 1: global_target_delta = 0.30
                   else: global_target_delta = 0.50
 
-                  chain = t.option_chain(target_exp)
-                  calls, puts = chain.calls, chain.puts
-                  if calls.empty or puts.empty: return None
-
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
-
+                  
+                  range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
+                  atm_strike = straddle_move = atm_iv = 0.0
+                  earnings_this_week = False
+                  
                   if frozen_stock_data:
-                      range_close = frozen_stock_data.get("close", live_close)
-                      atm_strike = frozen_stock_data.get("atmStrike")
-                      straddle_move = frozen_stock_data.get("straddleMove")
-                      atm_iv = frozen_stock_data.get("atmIV")
+                      atm_strike = frozen_stock_data.get("atmStrike", 0.0)
+                      straddle_move = frozen_stock_data.get("straddleMove", 0.0)
+                      atm_iv = frozen_stock_data.get("atmIV", 0.0)
                       earnings_this_week = frozen_stock_data.get("earningsThisWeek", False)
                   else:
-                      range_close = live_close
-                      calls['dist'] = abs(calls['strike'] - range_close)
-                      atm_call = calls.loc[calls['dist'].idxmin()]
-                      puts['dist'] = abs(puts['strike'] - range_close)
-                      atm_put = puts.loc[puts['dist'].idxmin()]
-                      atm_strike = float(atm_call['strike'])
-                      call_mark = (atm_call['bid'] + atm_call['ask']) / 2 if (atm_call['bid'] > 0 and atm_call['ask'] > 0) else atm_call['lastPrice']
-                      put_mark = (atm_put['bid'] + atm_put['ask']) / 2 if (atm_put['bid'] > 0 and atm_put['ask'] > 0) else atm_put['lastPrice']
-                      straddle_move = round((call_mark + put_mark) * 0.85, 2)
-                      atm_iv = round(((atm_call['impliedVolatility'] + atm_put['impliedVolatility']) / 2) * 100, 2)
-                      
-                      earnings_this_week = False
                       try:
                           earnings_df = t.get_earnings_dates(limit=5)
                           if earnings_df is not None and not earnings_df.empty:
@@ -289,39 +269,53 @@ jobs:
                                       earnings_this_week = True; break
                       except Exception: pass
 
-                  # B. CALCULATE LIVE YIELD-ON-VARIANCE (YoV)
-                  # Math Step 1: Calculate the true Expected Move (%) over the remaining days
-                  expected_move = ticker_hv * math.sqrt(days_to_exp / 252)
-                  if expected_move <= 0: expected_move = 0.001 # Prevent division by zero
-
-                  # --- CALLS ---
-                  best_call, min_call_diff, best_call_delta = None, float('inf'), global_target_delta
-                  for _, row in calls.iterrows():
-                      if row['impliedVolatility'] <= 0: continue
-                      d = compute_delta(live_close, row['strike'], row['impliedVolatility']*100, days_to_exp, True)
-                      diff = abs(d - global_target_delta)
-                      if diff < min_call_diff: min_call_diff, best_call, best_call_delta = diff, row, d
-
-                  if best_call is None: best_call = calls.iloc[0]
-                  call_mark = (best_call['bid'] + best_call['ask']) / 2 if (best_call['bid'] > 0 and best_call['ask'] > 0) else best_call['lastPrice']
+                  # --- PURE THETA DATA OPRA LOGIC ---
+                  chain = theta_client.get_options(
+                      req=OptionReqType.EOD,
+                      root=yf_symbol,
+                      exp=exp_dt.date(),
+                      date_range=DateRange(req_date, req_date)
+                  )
                   
-                  # Math Step 2: Yield / Expected Move
-                  call_yield = call_mark / best_call['strike']
+                  calls = chain[chain['right'] == OptionRight.CALL].copy()
+                  puts = chain[chain['right'] == OptionRight.PUT].copy()
+                  
+                  if calls.empty or puts.empty:
+                      print(f"No valid options found in OPRA feed for {yf_symbol}")
+                      return None
+                      
+                  if not frozen_stock_data:
+                      calls['dist'] = (calls['strike'] - range_close).abs()
+                      puts['dist'] = (puts['strike'] - range_close).abs()
+                      atm_call = calls.loc[calls['dist'].idxmin()]
+                      atm_put = puts.loc[puts['dist'].idxmin()]
+                      
+                      atm_strike = float(atm_call['strike'])
+                      straddle_move = round((float(atm_call['close']) + float(atm_put['close'])) * 0.85, 2)
+                      atm_iv = round(((float(atm_call['iv']) + float(atm_put['iv'])) / 2) * 100, 2)
+
+                  calls['delta_diff'] = (calls['delta'].abs() - global_target_delta).abs()
+                  best_call = calls.loc[calls['delta_diff'].idxmin()]
+                  
+                  puts['delta_diff'] = (puts['delta'].abs() - global_target_delta).abs()
+                  best_put = puts.loc[puts['delta_diff'].idxmin()]
+                  
+                  best_call_strike = float(best_call['strike'])
+                  best_call_price = float(best_call['close'])
+                  best_call_delta = float(best_call['delta'])
+                  
+                  best_put_strike = float(best_put['strike'])
+                  best_put_price = float(best_put['close'])
+                  best_put_delta = float(best_put['delta'])
+
+                  # CALCULATE LIVE YIELD-ON-VARIANCE (YoV)
+                  expected_move = ticker_hv * math.sqrt(days_to_exp / 252)
+                  if expected_move <= 0: expected_move = 0.001 
+                  
+                  call_yield = best_call_price / best_call_strike if best_call_strike else 0
                   call_pvi = int(round((call_yield / expected_move) * 1000))
 
-                  # --- PUTS ---
-                  best_put, min_put_diff, best_put_delta = None, float('inf'), -global_target_delta
-                  for _, row in puts.iterrows():
-                      if row['impliedVolatility'] <= 0: continue
-                      d = compute_delta(live_close, row['strike'], row['impliedVolatility']*100, days_to_exp, False)
-                      diff = abs(abs(d) - global_target_delta)
-                      if diff < min_put_diff: min_put_diff, best_put, best_put_delta = diff, row, d
-
-                  if best_put is None: best_put = puts.iloc[0]
-                  put_mark = (best_put['bid'] + best_put['ask']) / 2 if (best_put['bid'] > 0 and best_put['ask'] > 0) else best_put['lastPrice']
-                  
-                  # Math Step 2: Yield / Expected Move
-                  put_yield = put_mark / best_put['strike']
+                  put_yield = best_put_price / best_put_strike if best_put_strike else 0
                   put_pvi = int(round((put_yield / expected_move) * 1000))
 
                   return {
@@ -332,17 +326,17 @@ jobs:
                       "atmIV": atm_iv,
                       "earningsThisWeek": earnings_this_week,
                       "baseline": baseline_ticker,
-                      "call15Strike": float(best_call['strike']),
-                      "call15Price": round(call_mark, 2),
+                      "call15Strike": float(best_call_strike),
+                      "call15Price": round(best_call_price, 2),
                       "call15Delta": round(best_call_delta, 2),
                       "call15Pvi": call_pvi,
-                      "put15Strike": float(best_put['strike']),
-                      "put15Price": round(put_mark, 2),
+                      "put15Strike": float(best_put_strike),
+                      "put15Price": round(best_put_price, 2),
                       "put15Delta": round(best_put_delta, 2),
                       "put15Pvi": put_pvi
                   }
               except Exception as e:
-                  print(f"Error {yf_symbol}: {e}")
+                  print(f"Theta Data explicitly failed to retrieve {yf_symbol}: {e}")
                   return None
 
           individual_data = {}
@@ -357,11 +351,13 @@ jobs:
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
-          for display_name, yf_sym in ticker_map.items():
-              f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
-              individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines, f_data)
-              print(f"{display_name} Data OK")
-              time.sleep(2) 
+          req_dt = last_trading_dt.date()
+          with client.connect():
+              for display_name, yf_sym in ticker_map.items():
+                  f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
+                  individual_data[display_name] = compute_individual_metrics(yf_sym, mon, baselines, f_data, req_dt, client)
+                  print(f"{display_name} Data Pulled")
+                  time.sleep(0.5) 
 
           payload = {
               "spx": spx, "vix": vix, "hv20": hv20,
