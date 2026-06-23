@@ -80,8 +80,6 @@ jobs:
           
           target_date = last_friday_dt.strftime("%Y-%m-%d")
 
-          target_date = last_friday_dt.strftime("%Y-%m-%d")
-
           # CORRECTED: Only look ahead to next week if it is a weekend run
           if is_weekend_run:
               days_to_mon = (7 - last_trading_dt.weekday()) % 7 or 7
@@ -93,6 +91,7 @@ jobs:
               
           fri_next = mon + datetime.timedelta(days=4)
           live_weekof = f"{mon.month}/{mon.day}-{fri_next.month}/{fri_next.day}"
+          live_date_str = last_friday_dt.strftime("%Y-%m-%d")
 
           today_date = datetime.datetime.utcnow().date()
           global_dte = (fri_next.date() - today_date).days
