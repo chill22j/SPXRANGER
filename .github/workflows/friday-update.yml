@@ -2,7 +2,7 @@ name: Daily Market Update
 
 on:
   schedule:
-    - cron: '45 13 * * 1-6'
+    - cron: '00 21 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
     types: [force_update]
@@ -48,7 +48,7 @@ jobs:
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
           today_weekday = datetime.datetime.utcnow().weekday()
-          is_weekend_run = today_weekday >= 5
+          is_weekend_run = today_weekday >= 4
           
           frozen_data = None
           if not is_weekend_run and os.path.exists("data/market.json"):
@@ -117,10 +117,11 @@ jobs:
           today_date = datetime.datetime.utcnow().date()
           global_dte = (fri_next.date() - today_date).days
 
-          if global_dte >= 4: global_target_delta = 0.15
-          elif global_dte == 3: global_target_delta = 0.20
-          elif global_dte == 2: global_target_delta = 0.25
-          elif global_dte == 1: global_target_delta = 0.30
+          # SHIFTED: Evaluates the afternoon before (Monday afternoon triggers 0.20 delta for Tuesday)
+          if global_dte >= 5: global_target_delta = 0.15
+          elif global_dte == 4: global_target_delta = 0.20
+          elif global_dte == 3: global_target_delta = 0.25
+          elif global_dte == 2: global_target_delta = 0.30
           else: global_target_delta = 0.50
 
           if frozen_data and "spx" in frozen_data:
@@ -258,10 +259,11 @@ jobs:
                   exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
                   days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
 
-                  if days_to_exp >= 4: global_target_delta = 0.15
-                  elif days_to_exp == 3: global_target_delta = 0.20
-                  elif days_to_exp == 2: global_target_delta = 0.25
-                  elif days_to_exp == 1: global_target_delta = 0.30
+                  # SHIFTED: Evaluates the afternoon before
+                  if days_to_exp >= 5: global_target_delta = 0.15
+                  elif days_to_exp == 4: global_target_delta = 0.20
+                  elif days_to_exp == 3: global_target_delta = 0.25
+                  elif days_to_exp == 2: global_target_delta = 0.30
                   else: global_target_delta = 0.50
 
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
