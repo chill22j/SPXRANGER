@@ -611,7 +611,14 @@
       }
       
       // 4. Print the appropriate row based on the active tab
-      const closeDisplay = close != null ? Number(close).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>';
+      let livePrice = null;
+      if (marketData.individuals && marketData.individuals[ticker]) {
+          livePrice = marketData.individuals[ticker].livePrice;
+      }
+      
+      // Toggle between Friday Close and Live Intraday Price
+      let displayPrice = (currentTicker === 'RANGES') ? close : (livePrice || close);
+      const closeDisplay = displayPrice != null ? Number(displayPrice).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="empty-cell">—</span>';
 
       if (currentTicker === 'RANGES') {
           rows.push(
@@ -640,8 +647,11 @@
             '</tr>'
           );
       }
-    }
+    } 
     body.innerHTML = rows.join('');
+  }   
+
+
 
 
   function renderTicker() {
