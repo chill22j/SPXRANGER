@@ -24,14 +24,13 @@ jobs:
           import pandas as pd
           import numpy as np
           
-          # Simple Black-Scholes Delta calculation to replace ThetaData's greeks
+          # Simple Black-Scholes Delta calculation
           def calculate_bs_delta(spot, strike, dte, iv, is_call=True):
               if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
                   return 0.5 if is_call else -0.5
               t = dte / 365.0
               d1 = (math.log(spot / strike) + (0.5 * (iv ** 2)) * t) / (iv * math.sqrt(t))
               
-              # Simple numerical approximation of cumulative standard normal distribution
               def norm_cdf(x):
                   return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
                   
@@ -181,23 +180,17 @@ jobs:
 
           def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data):
               try:
-                  # Use standard yfinance Ticker configuration
                   ticker_obj = yf.Ticker(yf_symbol)
-                  
-                  # Standard historical check for fallback prices
                   hist = ticker_obj.history(period="1d")
                   if hist.empty: return None
                   live_close = round(hist['Close'].iloc[-1], 2)
                   
-                  # Safe handling of baseline tracker names
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
                   
-                  # Look up natural expiries available on Yahoo
                   expirations = ticker_obj.options
                   if not expirations: return None
                   
-                  # Parse expirations dynamically to locate target week
                   parsed_exps = [datetime.datetime.strptime(x, "%Y-%m-%d").date() for x in expirations]
                   parsed_exps.sort()
                   
@@ -209,47 +202,35 @@ jobs:
                   target_exp_str = target_exp_date.strftime("%Y-%m-%d")
                   days_to_exp = max((target_exp_date - datetime.datetime.utcnow().date()).days, 1)
 
-                  # Adjust expected target delta baseline based on DTE remaining
                   if days_to_exp >= 5: target_delta = 0.15
                   elif days_to_exp == 4: target_delta = 0.20
                   elif days_to_exp == 3: target_delta = 0.25
                   elif days_to_exp == 2: target_delta = 0.30
                   else: target_delta = 0.50
 
-                  # Pull full options tables safely via yfinance
                   opt_chain = ticker_obj.option_chain(target_exp_str)
                   calls_df = opt_chain.calls
                   puts_df = opt_chain.puts
                   
                   if calls_df.empty or puts_df.empty: return None
 
-                  # Derive ATM metrics based on closest matching strike
                   calls_df['dist'] = (calls_df['strike'] - range_close).abs()
                   puts_df['dist'] = (puts_df['strike'] - range_close).abs()
                   
                   atm_call = calls_df.loc[calls_df['dist'].idxmin()]
                   atm_put = puts_df.loc[puts_df['dist'].idxmin()]
-                  
                   atm_strike = float(atm_call['strike'])
                   
-                  # Handle default price calculation safely if missing volume metrics
                   c_price = float(atm_call['lastPrice'] if not math.isnan(atm_call['lastPrice']) else 0)
                   p_price = float(atm_put['lastPrice'] if not math.isnan(atm_put['lastPrice']) else 0)
                   
                   straddle_move = round((c_price + p_price) * 0.85, 2)
-                  atm_iv = round(((float(atm_call['impliedVolatility']) + float(atm_put['impliedVolatility'])) / 2) * 100, 2)
-
-                  # Compute Custom Greeks + Delta matching on the fly via BS implementation
-                  calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, row['impliedVolatility'], is_call=True), axis=1)
-                  puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, row['impliedVolatility'], is_call=False), axis=1)
-
-                  calls_df['delta_diff'] = (calls_df['bs_delta'].abs() - target_delta).abs()
-                  best_call = calls_df.loc[calls_df['delta_diff'].idxmin()]
                   
-                  puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - target_delta).abs()
-                  best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
+                  # Baseline IV calculation from the liquid ATM strikes
+                  raw_atm_iv = (float(atm_call['impliedVolatility']) + float(atm_put['impliedVolatility'])) / 2
+                  atm_iv = round(raw_atm_iv * 100, 2)
 
-                  # Generate standard structural output configuration for JSON
+                  # Fallback historical volatility check if ATM options IV is compressed/missing
                   hist_3mo = ticker_obj.history(period="3mo")
                   hist_closes = hist_3mo['Close'].dropna().tolist()
                   ticker_hv = 0.20
@@ -257,8 +238,23 @@ jobs:
                       log_rets = [math.log(hist_closes[i]/hist_closes[i-1]) for i in range(1, len(hist_closes))]
                       ticker_hv = math.sqrt(sum((r - (sum(log_rets)/len(log_rets)))**2 for r in log_rets)/(len(log_rets)-1)) * math.sqrt(252)
 
+                  # Smooth Volatility Guard: If yfinance ATM IV is corrupted/zero, rely on cleaned historical volatility
+                  clean_iv = raw_atm_iv
+                  if math.isnan(clean_iv) or clean_iv <= 0.05 or clean_iv > 3.0:
+                      clean_iv = ticker_hv if ticker_hv > 0.05 else 0.30
+
                   expected_move_pct = ticker_hv * math.sqrt(days_to_exp / 252)
                   if expected_move_pct <= 0: expected_move_pct = 0.001
+
+                  # Calculate clean, perfectly scaling deltas utilizing the smoothed baseline IV
+                  calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, clean_iv, is_call=True), axis=1)
+                  puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, clean_iv, is_call=False), axis=1)
+
+                  calls_df['delta_diff'] = (calls_df['bs_delta'].abs() - target_delta).abs()
+                  best_call = calls_df.loc[calls_df['delta_diff'].idxmin()]
+                  
+                  puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - target_delta).abs()
+                  best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
                   bc_price = float(best_call['lastPrice']) if not math.isnan(best_call['lastPrice']) else 0.01
                   bp_price = float(best_put['lastPrice']) if not math.isnan(best_put['lastPrice']) else 0.01
@@ -325,5 +321,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "chore: Migrate option calculations to free yfinance framework"
+          git diff --staged --quiet || git commit -m "fix: apply continuous volatility smoothing to options pipeline"
           git push
