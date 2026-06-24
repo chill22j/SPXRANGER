@@ -24,19 +24,36 @@ jobs:
           import pandas as pd
           import numpy as np
           
+          # Mathematical Delta Engine
           def calculate_bs_delta(spot, strike, dte, iv, is_call=True):
               if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
                   return 0.5 if is_call else -0.5
               t = dte / 365.0
-              d1 = (math.log(spot / strike) + (0.5 * (iv ** 2)) * t) / (iv * math.sqrt(t))
+              r = 0.05
+              d1 = (math.log(spot / strike) + (r + 0.5 * (iv ** 2)) * t) / (iv * math.sqrt(t))
+              
+              def norm_cdf(x):
+                  return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+                  
+              return norm_cdf(d1) if is_call else norm_cdf(d1) - 1.0
+
+          # Mathematical Pricing Engine (Bypasses Post-Market Spread Corruption)
+          def calculate_bs_price(spot, strike, dte, iv, is_call=True):
+              if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
+                  return 0.01
+              t = dte / 365.0
+              r = 0.05
+              d1 = (math.log(spot / strike) + (r + 0.5 * (iv ** 2)) * t) / (iv * math.sqrt(t))
+              d2 = d1 - iv * math.sqrt(t)
               
               def norm_cdf(x):
                   return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
                   
               if is_call:
-                  return norm_cdf(d1)
+                  price = spot * norm_cdf(d1) - strike * math.exp(-r * t) * norm_cdf(d2)
               else:
-                  return norm_cdf(d1) - 1.0
+                  price = strike * math.exp(-r * t) * norm_cdf(-d2) - spot * norm_cdf(-d1)
+              return max(price, 0.01)
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -114,7 +131,7 @@ jobs:
           elif global_dte == 4: global_target_delta = 0.20
           elif global_dte == 3: global_target_delta = 0.25
           elif global_dte == 2: global_target_delta = 0.30
-          else: global_target_delta = 0.50
+          else: global_target_delta = 0.30
 
           if frozen_data and "spx" in frozen_data and frozen_data.get("spx") is not None:
               spx = frozen_data.get("spx")
@@ -214,23 +231,7 @@ jobs:
                   
                   live_atm_call = calls_df.loc[calls_df['live_dist'].idxmin()]
                   live_atm_put = puts_df.loc[puts_df['live_dist'].idxmin()]
-                  
-                  def get_price(row):
-                      b = float(row.get('bid', 0)) if pd.notnull(row.get('bid')) else 0
-                      a = float(row.get('ask', 0)) if pd.notnull(row.get('ask')) else 0
-                      if b > 0 and a > 0: return (b + a) / 2.0
-                      if b > 0: return b
-                      if a > 0: return a
-                      lp = float(row.get('lastPrice', 0)) if pd.notnull(row.get('lastPrice')) else 0
-                      return lp if lp > 0 else 0.01
 
-                  if not frozen_stock_data:
-                      atm_strike = float(live_atm_call['strike'])
-                      c_price = get_price(live_atm_call)
-                      p_price = get_price(live_atm_put)
-                      straddle_move = round((c_price + p_price) * 0.85, 2)
-                      atm_iv = round(((float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2) * 100, 2)
-                  
                   raw_atm_iv = (float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2
 
                   hist_3mo = ticker_obj.history(period="3mo")
@@ -244,6 +245,14 @@ jobs:
                   if math.isnan(clean_iv) or clean_iv <= 0.05 or clean_iv > 3.0:
                       clean_iv = ticker_hv if ticker_hv > 0.05 else 0.30
 
+                  # New Pricing Anchor: Forces perfect alignment with the 2:00 PM MT Stock Close
+                  if not frozen_stock_data:
+                      atm_strike = float(live_atm_call['strike'])
+                      c_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=True)
+                      p_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=False)
+                      straddle_move = round((c_price + p_price) * 0.85, 2)
+                      atm_iv = round(clean_iv * 100, 2)
+
                   expected_move_pct = ticker_hv * math.sqrt(days_to_exp / 252)
                   if expected_move_pct <= 0: expected_move_pct = 0.001
 
@@ -256,8 +265,9 @@ jobs:
                   puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - global_tgt_delta).abs()
                   best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
-                  bc_price = get_price(best_call)
-                  bp_price = get_price(best_put)
+                  # Lock the target prices to theoretical fair value
+                  bc_price = calculate_bs_price(live_close, float(best_call['strike']), days_to_exp, clean_iv, is_call=True)
+                  bp_price = calculate_bs_price(live_close, float(best_put['strike']), days_to_exp, clean_iv, is_call=False)
 
                   call_pvi = int(round(((bc_price / float(best_call['strike'])) / expected_move_pct) * 1000)) if best_call['strike'] else 0
                   put_pvi = int(round(((bp_price / float(best_put['strike'])) / expected_move_pct) * 1000)) if best_put['strike'] else 0
@@ -290,7 +300,6 @@ jobs:
           
           for display_name, yf_sym in ticker_map.items():
               f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
-              # THE FIX: Correctly mapping the 6 arguments
               res = compute_individual_metrics(display_name, yf_sym, mon, global_target_delta, baselines, f_data)
               if res:
                   individual_data[display_name] = res
@@ -322,5 +331,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "fix: correct function argument mapping for delta targeting"
+          git diff --staged --quiet || git commit -m "feat: implement mathematical options pricing to bypass 4:15pm ETF data desyncs"
           git push
