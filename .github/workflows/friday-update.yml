@@ -177,13 +177,14 @@ jobs:
 
               max_pain = None; top_puts = []; top_calls = []; options_expiry = None
 
-          def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data):
+          def compute_individual_metrics(display_name, yf_symbol, mon_dt, global_tgt_delta, index_baselines, frozen_stock_data):
               try:
                   ticker_obj = yf.Ticker(yf_symbol)
                   hist = ticker_obj.history(period="1d")
                   if hist.empty: return None
                   
                   live_close = round(hist['Close'].iloc[-1], 2)
+                  
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
                   
@@ -196,21 +197,11 @@ jobs:
                   if not expirations: return None
                   
                   parsed_exps = [datetime.datetime.strptime(x, "%Y-%m-%d").date() for x in expirations]
-                  parsed_exps.sort()
                   
-                  target_exp_date = parsed_exps[0]
-                  for exp_date in parsed_exps:
-                      if 0 <= (exp_date - mon_dt.date()).days <= 4:
-                          target_exp_date = exp_date; break
-                          
+                  fri_next_dt = mon_dt + datetime.timedelta(days=4)
+                  target_exp_date = min(parsed_exps, key=lambda d: abs((d - fri_next_dt.date()).days))
                   target_exp_str = target_exp_date.strftime("%Y-%m-%d")
                   days_to_exp = max((target_exp_date - datetime.datetime.utcnow().date()).days, 1)
-
-                  if days_to_exp >= 5: target_delta = 0.15
-                  elif days_to_exp == 4: target_delta = 0.20
-                  elif days_to_exp == 3: target_delta = 0.25
-                  elif days_to_exp == 2: target_delta = 0.30
-                  else: target_delta = 0.50
 
                   opt_chain = ticker_obj.option_chain(target_exp_str)
                   calls_df = opt_chain.calls
@@ -224,7 +215,6 @@ jobs:
                   live_atm_call = calls_df.loc[calls_df['live_dist'].idxmin()]
                   live_atm_put = puts_df.loc[puts_df['live_dist'].idxmin()]
                   
-                  # The Fix: Midpoint pricing completely bypasses stale yfinance lastTrade data
                   def get_price(row):
                       b = float(row.get('bid', 0)) if pd.notnull(row.get('bid')) else 0
                       a = float(row.get('ask', 0)) if pd.notnull(row.get('ask')) else 0
@@ -260,10 +250,10 @@ jobs:
                   calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=True), axis=1)
                   puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=False), axis=1)
 
-                  calls_df['delta_diff'] = (calls_df['bs_delta'].abs() - target_delta).abs()
+                  calls_df['delta_diff'] = (calls_df['bs_delta'].abs() - global_tgt_delta).abs()
                   best_call = calls_df.loc[calls_df['delta_diff'].idxmin()]
                   
-                  puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - target_delta).abs()
+                  puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - global_tgt_delta).abs()
                   best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
                   bc_price = get_price(best_call)
@@ -300,7 +290,8 @@ jobs:
           
           for display_name, yf_sym in ticker_map.items():
               f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
-              res = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data)
+              # THE FIX: Correctly mapping the 6 arguments
+              res = compute_individual_metrics(display_name, yf_sym, mon, global_target_delta, baselines, f_data)
               if res:
                   individual_data[display_name] = res
                   print(f"{display_name} Data OK")
@@ -331,5 +322,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "fix: replace stale yfinance lastPrice with live bid-ask midpoint"
+          git diff --staged --quiet || git commit -m "fix: correct function argument mapping for delta targeting"
           git push
