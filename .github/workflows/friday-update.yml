@@ -15,32 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
       - name: Fetch market data and calculate max pain
         env:
           THETA_USERNAME: ${{ secrets.THETA_USERNAME }}
           THETA_PASSWORD: ${{ secrets.THETA_PASSWORD }}
         run: |
-          # Download and boot the terminal in the background
-          curl -sL -o ThetaTerminal.jar https://download-stable.thetadata.us
-          nohup java -jar ThetaTerminal.jar $THETA_USERNAME $THETA_PASSWORD > terminal.log 2>&1 &
-          
-          echo "Waiting 15 seconds for OPRA connection to establish..."
-          sleep 15
-          
-          pip install yfinance lxml "thetadata<1.0.0" pandas python-dotenv --break-system-packages -q
+          # The new V1 library requires no Java Terminal! Just install and run.
+          pip install yfinance lxml thetadata pandas python-dotenv --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
           import pandas as pd
-          from thetadata import ThetaClient, OptionReqType, OptionRight, DateRange
+          
+          # Use the new v1.x ThetaClient
+          from thetadata import ThetaClient
 
-          # Connect to Terminal
           client = ThetaClient(email=os.environ["THETA_USERNAME"], password=os.environ["THETA_PASSWORD"], dataframe_type="pandas")
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -184,14 +173,12 @@ jobs:
 
           def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data, theta_client, req_date):
               try:
-                  # 1. Fetch live closing price bypassing yfinance entirely
                   chart_data = fetch_chart(yf_symbol, "3mo")
                   closes = chart_data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
                   valid_closes = [c for c in closes if c and c > 0]
                   if not valid_closes: return None
                   live_close = round(valid_closes[-1], 2)
                   
-                  # 2. Calculate Historical Volatility natively
                   ticker_hv = 0.20
                   if len(valid_closes) > 2:
                       log_rets = []
@@ -204,15 +191,23 @@ jobs:
                           ticker_hv = math.sqrt(var) * math.sqrt(252)
                           if ticker_hv <= 0.05: ticker_hv = 0.05
 
-                  # 3. Determine clean OPRA ticker
                   if display_name == "SPX": theta_sym = "SPXW"
                   elif display_name == "NDX": theta_sym = "NDXP"
                   else: theta_sym = yf_symbol
 
-                  # 4. Get Expirations directly from Theta Data
-                  expirations = theta_client.get_expirations(root=theta_sym)
-                  if not expirations: return None
+                  # 1. Fetch v1.x Expirations
+                  try:
+                      exp_df = theta_client.option_list_expirations(symbol=theta_sym)
+                      if isinstance(exp_df, pd.DataFrame):
+                          col = 'expiration' if 'expiration' in exp_df.columns else exp_df.columns[0]
+                          expirations = pd.to_datetime(exp_df[col]).dt.date.tolist()
+                      else:
+                          expirations = [pd.to_datetime(x).date() for x in exp_df]
+                  except Exception as e:
+                      print(f"Failed to fetch expirations for {theta_sym}: {e}")
+                      return None
                   
+                  if not expirations: return None
                   expirations.sort()
                   target_exp = expirations[0]
                   for exp_date in expirations:
@@ -231,27 +226,32 @@ jobs:
                   
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
                   atm_strike = straddle_move = atm_iv = 0.0
-                  earnings_this_week = False
+                  earnings_this_week = frozen_stock_data.get("earningsThisWeek", False) if frozen_stock_data else False
                   
                   if frozen_stock_data:
                       atm_strike = frozen_stock_data.get("atmStrike", 0.0)
                       straddle_move = frozen_stock_data.get("straddleMove", 0.0)
                       atm_iv = frozen_stock_data.get("atmIV", 0.0)
-                      earnings_this_week = frozen_stock_data.get("earningsThisWeek", False)
 
-                  # 5. Fetch the strict End-of-Day OPRA feed
+                  # 2. Fetch v1.x Options Chain (Prices + Greeks merged defensively)
                   chain = None
                   try:
-                      chain = theta_client.get_hist_option(
-                          req=OptionReqType.EOD,
-                          root=theta_sym,
-                          exp=target_exp,
-                          date_range=DateRange(req_date, req_date)
+                      eod_chain = theta_client.option_history_eod(
+                          symbol=theta_sym, expiration=target_exp, strike="*", right="both",
+                          start_date=req_date, end_date=req_date
                       )
+                      greeks_chain = theta_client.option_history_greeks_eod(
+                          symbol=theta_sym, expiration=target_exp, strike="*", right="both",
+                          start_date=req_date, end_date=req_date
+                      )
+                      
+                      if eod_chain is not None and not eod_chain.empty and greeks_chain is not None and not greeks_chain.empty:
+                          chain = pd.merge(eod_chain, greeks_chain, on=['strike', 'right'], how='inner')
+                      else:
+                          chain = eod_chain
                   except Exception as e:
                       print(f"Data not ready for {theta_sym}: {e}")
 
-                  # Graceful Fallback if market is still open and feed is empty
                   if chain is None or chain.empty:
                       return {
                           "close": range_close, "livePrice": live_close, "atmStrike": atm_strike,
@@ -259,8 +259,14 @@ jobs:
                           "earningsThisWeek": earnings_this_week, "baseline": baseline_ticker
                       }
                       
-                  calls = chain[chain['right'] == OptionRight.CALL].copy()
-                  puts = chain[chain['right'] == OptionRight.PUT].copy()
+                  # 3. Defensive Column Mapping (v1.x handles headers differently)
+                  chain.columns = [str(c).lower() for c in chain.columns]
+                  if 'iv' not in chain.columns and 'implied_vol' in chain.columns: chain['iv'] = chain['implied_vol']
+                  elif 'iv' not in chain.columns and 'implied_volatility' in chain.columns: chain['iv'] = chain['implied_volatility']
+                  if 'close' not in chain.columns and 'price' in chain.columns: chain['close'] = chain['price']
+                  
+                  calls = chain[chain['right'].astype(str).str.upper().str.startswith('C')].copy()
+                  puts = chain[chain['right'].astype(str).str.upper().str.startswith('P')].copy()
                   
                   if not frozen_stock_data:
                       calls['dist'] = (calls['strike'] - range_close).abs()
@@ -316,7 +322,9 @@ jobs:
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
+          # TIME MACHINE TEST: Forces the request to pull yesterday's finalized OPRA data
           req_dt = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).date()
+          
           for display_name, yf_sym in ticker_map.items():
               f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
               individual_data[display_name] = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data, client, req_dt)
