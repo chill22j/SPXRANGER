@@ -24,7 +24,6 @@ jobs:
           import pandas as pd
           import numpy as np
           
-          # Simple Black-Scholes Delta calculation
           def calculate_bs_delta(spot, strike, dte, iv, is_call=True):
               if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
                   return 0.5 if is_call else -0.5
@@ -184,7 +183,6 @@ jobs:
                   hist = ticker_obj.history(period="1d")
                   if hist.empty: return None
                   
-                  # 1. Properly Separate LIVE vs FROZEN Baseline Prices
                   live_close = round(hist['Close'].iloc[-1], 2)
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
@@ -220,25 +218,31 @@ jobs:
                   
                   if calls_df.empty or puts_df.empty: return None
 
-                  # 2. Extract strictly LIVE ATM Strikes to smooth today's volatility
                   calls_df['live_dist'] = (calls_df['strike'] - live_close).abs()
                   puts_df['live_dist'] = (puts_df['strike'] - live_close).abs()
                   
                   live_atm_call = calls_df.loc[calls_df['live_dist'].idxmin()]
                   live_atm_put = puts_df.loc[puts_df['live_dist'].idxmin()]
                   
-                  # 3. If running on Friday/Weekend, lock in the exact Weekly Ranges
+                  # The Fix: Midpoint pricing completely bypasses stale yfinance lastTrade data
+                  def get_price(row):
+                      b = float(row.get('bid', 0)) if pd.notnull(row.get('bid')) else 0
+                      a = float(row.get('ask', 0)) if pd.notnull(row.get('ask')) else 0
+                      if b > 0 and a > 0: return (b + a) / 2.0
+                      if b > 0: return b
+                      if a > 0: return a
+                      lp = float(row.get('lastPrice', 0)) if pd.notnull(row.get('lastPrice')) else 0
+                      return lp if lp > 0 else 0.01
+
                   if not frozen_stock_data:
                       atm_strike = float(live_atm_call['strike'])
-                      c_price = float(live_atm_call['lastPrice'] if not math.isnan(live_atm_call['lastPrice']) else 0)
-                      p_price = float(live_atm_put['lastPrice'] if not math.isnan(live_atm_put['lastPrice']) else 0)
+                      c_price = get_price(live_atm_call)
+                      p_price = get_price(live_atm_put)
                       straddle_move = round((c_price + p_price) * 0.85, 2)
                       atm_iv = round(((float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2) * 100, 2)
                   
-                  # Baseline IV calculation from the liquid LIVE ATM strikes
                   raw_atm_iv = (float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2
 
-                  # Fallback historical volatility check if ATM options IV is compressed/missing
                   hist_3mo = ticker_obj.history(period="3mo")
                   hist_closes = hist_3mo['Close'].dropna().tolist()
                   ticker_hv = 0.20
@@ -246,7 +250,6 @@ jobs:
                       log_rets = [math.log(hist_closes[i]/hist_closes[i-1]) for i in range(1, len(hist_closes))]
                       ticker_hv = math.sqrt(sum((r - (sum(log_rets)/len(log_rets)))**2 for r in log_rets)/(len(log_rets)-1)) * math.sqrt(252)
 
-                  # Smooth Volatility Guard
                   clean_iv = raw_atm_iv
                   if math.isnan(clean_iv) or clean_iv <= 0.05 or clean_iv > 3.0:
                       clean_iv = ticker_hv if ticker_hv > 0.05 else 0.30
@@ -254,7 +257,6 @@ jobs:
                   expected_move_pct = ticker_hv * math.sqrt(days_to_exp / 252)
                   if expected_move_pct <= 0: expected_move_pct = 0.001
 
-                  # 4. Calculate clean Deltas utilizing the LIVE STOCK PRICE (Crucial Fix)
                   calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=True), axis=1)
                   puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=False), axis=1)
 
@@ -264,8 +266,8 @@ jobs:
                   puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - target_delta).abs()
                   best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
-                  bc_price = float(best_call['lastPrice']) if not math.isnan(best_call['lastPrice']) else 0.01
-                  bp_price = float(best_put['lastPrice']) if not math.isnan(best_put['lastPrice']) else 0.01
+                  bc_price = get_price(best_call)
+                  bp_price = get_price(best_put)
 
                   call_pvi = int(round(((bc_price / float(best_call['strike'])) / expected_move_pct) * 1000)) if best_call['strike'] else 0
                   put_pvi = int(round(((bp_price / float(best_put['strike'])) / expected_move_pct) * 1000)) if best_put['strike'] else 0
@@ -329,5 +331,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "fix: decouple live delta logic from frozen weekend ranges"
+          git diff --staged --quiet || git commit -m "fix: replace stale yfinance lastPrice with live bid-ask midpoint"
           git push
