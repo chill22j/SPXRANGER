@@ -5,7 +5,7 @@ on:
     - cron: '0 21 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
-    types: [force_update]
+    - types: [force_update]
 
 jobs:
   update-market-data:
@@ -183,10 +183,16 @@ jobs:
                   ticker_obj = yf.Ticker(yf_symbol)
                   hist = ticker_obj.history(period="1d")
                   if hist.empty: return None
-                  live_close = round(hist['Close'].iloc[-1], 2)
                   
-                  baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
+                  # 1. Properly Separate LIVE vs FROZEN Baseline Prices
+                  live_close = round(hist['Close'].iloc[-1], 2)
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
+                  baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
+                  
+                  atm_strike = frozen_stock_data.get("atmStrike", 0.0) if frozen_stock_data else 0.0
+                  straddle_move = frozen_stock_data.get("straddleMove", 0.0) if frozen_stock_data else 0.0
+                  atm_iv = frozen_stock_data.get("atmIV", 0.0) if frozen_stock_data else 0.0
+                  earnings_this_week = frozen_stock_data.get("earningsThisWeek", False) if frozen_stock_data else False
                   
                   expirations = ticker_obj.options
                   if not expirations: return None
@@ -214,21 +220,23 @@ jobs:
                   
                   if calls_df.empty or puts_df.empty: return None
 
-                  calls_df['dist'] = (calls_df['strike'] - range_close).abs()
-                  puts_df['dist'] = (puts_df['strike'] - range_close).abs()
+                  # 2. Extract strictly LIVE ATM Strikes to smooth today's volatility
+                  calls_df['live_dist'] = (calls_df['strike'] - live_close).abs()
+                  puts_df['live_dist'] = (puts_df['strike'] - live_close).abs()
                   
-                  atm_call = calls_df.loc[calls_df['dist'].idxmin()]
-                  atm_put = puts_df.loc[puts_df['dist'].idxmin()]
-                  atm_strike = float(atm_call['strike'])
+                  live_atm_call = calls_df.loc[calls_df['live_dist'].idxmin()]
+                  live_atm_put = puts_df.loc[puts_df['live_dist'].idxmin()]
                   
-                  c_price = float(atm_call['lastPrice'] if not math.isnan(atm_call['lastPrice']) else 0)
-                  p_price = float(atm_put['lastPrice'] if not math.isnan(atm_put['lastPrice']) else 0)
+                  # 3. If running on Friday/Weekend, lock in the exact Weekly Ranges
+                  if not frozen_stock_data:
+                      atm_strike = float(live_atm_call['strike'])
+                      c_price = float(live_atm_call['lastPrice'] if not math.isnan(live_atm_call['lastPrice']) else 0)
+                      p_price = float(live_atm_put['lastPrice'] if not math.isnan(live_atm_put['lastPrice']) else 0)
+                      straddle_move = round((c_price + p_price) * 0.85, 2)
+                      atm_iv = round(((float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2) * 100, 2)
                   
-                  straddle_move = round((c_price + p_price) * 0.85, 2)
-                  
-                  # Baseline IV calculation from the liquid ATM strikes
-                  raw_atm_iv = (float(atm_call['impliedVolatility']) + float(atm_put['impliedVolatility'])) / 2
-                  atm_iv = round(raw_atm_iv * 100, 2)
+                  # Baseline IV calculation from the liquid LIVE ATM strikes
+                  raw_atm_iv = (float(live_atm_call['impliedVolatility']) + float(live_atm_put['impliedVolatility'])) / 2
 
                   # Fallback historical volatility check if ATM options IV is compressed/missing
                   hist_3mo = ticker_obj.history(period="3mo")
@@ -238,7 +246,7 @@ jobs:
                       log_rets = [math.log(hist_closes[i]/hist_closes[i-1]) for i in range(1, len(hist_closes))]
                       ticker_hv = math.sqrt(sum((r - (sum(log_rets)/len(log_rets)))**2 for r in log_rets)/(len(log_rets)-1)) * math.sqrt(252)
 
-                  # Smooth Volatility Guard: If yfinance ATM IV is corrupted/zero, rely on cleaned historical volatility
+                  # Smooth Volatility Guard
                   clean_iv = raw_atm_iv
                   if math.isnan(clean_iv) or clean_iv <= 0.05 or clean_iv > 3.0:
                       clean_iv = ticker_hv if ticker_hv > 0.05 else 0.30
@@ -246,9 +254,9 @@ jobs:
                   expected_move_pct = ticker_hv * math.sqrt(days_to_exp / 252)
                   if expected_move_pct <= 0: expected_move_pct = 0.001
 
-                  # Calculate clean, perfectly scaling deltas utilizing the smoothed baseline IV
-                  calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, clean_iv, is_call=True), axis=1)
-                  puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(range_close, row['strike'], days_to_exp, clean_iv, is_call=False), axis=1)
+                  # 4. Calculate clean Deltas utilizing the LIVE STOCK PRICE (Crucial Fix)
+                  calls_df['bs_delta'] = calls_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=True), axis=1)
+                  puts_df['bs_delta'] = puts_df.apply(lambda row: calculate_bs_delta(live_close, row['strike'], days_to_exp, clean_iv, is_call=False), axis=1)
 
                   calls_df['delta_diff'] = (calls_df['bs_delta'].abs() - target_delta).abs()
                   best_call = calls_df.loc[calls_df['delta_diff'].idxmin()]
@@ -265,7 +273,7 @@ jobs:
                   return {
                       "close": range_close, "livePrice": live_close, "atmStrike": atm_strike,
                       "straddleMove": straddle_move, "atmIV": atm_iv,
-                      "earningsThisWeek": frozen_stock_data.get("earningsThisWeek", False) if frozen_stock_data else False, 
+                      "earningsThisWeek": earnings_this_week, 
                       "baseline": baseline_ticker,
                       "call15Strike": float(best_call['strike']), "call15Price": round(bc_price, 2),
                       "call15Delta": round(float(best_call['bs_delta']), 2), "call15Pvi": call_pvi,
@@ -321,5 +329,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "fix: apply continuous volatility smoothing to options pipeline"
+          git diff --staged --quiet || git commit -m "fix: decouple live delta logic from frozen weekend ranges"
           git push
