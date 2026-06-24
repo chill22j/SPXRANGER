@@ -316,7 +316,7 @@ jobs:
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
-          req_dt = last_trading_dt.date()
+          req_dt = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).date()
           for display_name, yf_sym in ticker_map.items():
               f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
               individual_data[display_name] = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data, client, req_dt)
