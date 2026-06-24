@@ -11,8 +11,8 @@
   "ndxStretch": 6.75,
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
-  "targetDelta": 0.25,
-  "updated": "2026-06-23T22:10:17Z",
+  "targetDelta": 0.3,
+  "updated": "2026-06-24T15:28:23Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -33,105 +33,197 @@
     ]
   },
   "ndxOptions": {
-    "expiry": "6/26",
-    "maxPain": 29650,
-    "topPuts": [
-      {
-        "strike": 29700,
-        "oi": 78
-      },
-      {
-        "strike": 28400,
-        "oi": 77
-      },
-      {
-        "strike": 32500,
-        "oi": 60
-      },
-      {
-        "strike": 26600,
-        "oi": 37
-      }
-    ],
-    "topCalls": [
-      {
-        "strike": 30600,
-        "oi": 114
-      },
-      {
-        "strike": 32600,
-        "oi": 73
-      },
-      {
-        "strike": 30900,
-        "oi": 69
-      },
-      {
-        "strike": 27500,
-        "oi": 65
-      }
-    ]
+    "expiry": null,
+    "maxPain": null,
+    "topPuts": [],
+    "topCalls": []
   },
   "qqqOptions": {
-    "expiry": "6/26",
-    "maxPain": 727,
-    "topPuts": [
-      {
-        "strike": 725,
-        "oi": 10421
-      },
-      {
-        "strike": 695,
-        "oi": 9494
-      },
-      {
-        "strike": 700,
-        "oi": 7265
-      },
-      {
-        "strike": 720,
-        "oi": 6722
-      }
-    ],
-    "topCalls": [
-      {
-        "strike": 750,
-        "oi": 6633
-      },
-      {
-        "strike": 739,
-        "oi": 5859
-      },
-      {
-        "strike": 745,
-        "oi": 5635
-      },
-      {
-        "strike": 755,
-        "oi": 5620
-      }
-    ]
+    "expiry": null,
+    "maxPain": null,
+    "topPuts": [],
+    "topCalls": []
   },
   "individuals": {
-    "SPX": null,
-    "NDX": null,
-    "SPY": null,
-    "QQQ": null,
-    "NVDA": null,
-    "TSLA": null,
-    "AAPL": null,
-    "XOM": null,
-    "AMZN": null,
-    "GOOG": null,
-    "MSFT": null,
-    "META": null,
-    "NFLX": null,
-    "AMD": null,
-    "DELL": null,
-    "MU": null,
-    "NOW": null,
-    "CAT": null,
-    "GS": null,
-    "NBIS": null
+    "SPX": {
+      "close": 7419.86,
+      "livePrice": 7419.86,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "NDX": {
+      "close": 29463.08,
+      "livePrice": 29463.08,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "SPY": {
+      "close": 739.19,
+      "livePrice": 739.19,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "QQQ": {
+      "close": 716.77,
+      "livePrice": 716.77,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "NVDA": {
+      "close": 200.8,
+      "livePrice": 200.8,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "TSLA": {
+      "close": 383.58,
+      "livePrice": 383.58,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "AAPL": {
+      "close": 298.2,
+      "livePrice": 298.2,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "XOM": {
+      "close": 135.8,
+      "livePrice": 135.8,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "AMZN": {
+      "close": 241.87,
+      "livePrice": 241.87,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "GOOG": {
+      "close": 349.97,
+      "livePrice": 349.97,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "MSFT": {
+      "close": 374.74,
+      "livePrice": 374.74,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "META": {
+      "close": 565.86,
+      "livePrice": 565.86,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "NFLX": {
+      "close": 72.39,
+      "livePrice": 72.39,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "AMD": {
+      "close": 517.55,
+      "livePrice": 517.55,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "DELL": {
+      "close": 432.79,
+      "livePrice": 432.79,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "MU": {
+      "close": 1033.16,
+      "livePrice": 1033.16,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "NOW": {
+      "close": 95.79,
+      "livePrice": 95.79,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    },
+    "CAT": {
+      "close": 999.84,
+      "livePrice": 999.84,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "GS": {
+      "close": 1085.25,
+      "livePrice": 1085.25,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "SPY"
+    },
+    "NBIS": {
+      "close": 257.76,
+      "livePrice": 257.76,
+      "atmStrike": 0.0,
+      "straddleMove": 0.0,
+      "atmIV": 0.0,
+      "earningsThisWeek": false,
+      "baseline": "QQQ"
+    }
   }
 }
