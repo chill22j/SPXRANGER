@@ -12,7 +12,7 @@
   "date": "2026-06-18",
   "weekof": "6/22-6/26",
   "targetDelta": 0.3,
-  "updated": "2026-06-24T21:01:09Z",
+  "updated": "2026-06-24T22:02:23Z",
   "options": {
     "expiry": "6/26",
     "maxPain": 6500,
@@ -53,14 +53,14 @@
       "atmIV": 13.8,
       "earningsThisWeek": false,
       "baseline": "QQQ",
-      "call15Strike": 29600.0,
-      "call15Price": 293.6,
-      "call15Delta": 0.31,
-      "call15Pvi": 458,
+      "call15Strike": 29650.0,
+      "call15Price": 133.82,
+      "call15Delta": 0.29,
+      "call15Pvi": 208,
       "put15Strike": 28850.0,
-      "put15Price": 95.2,
+      "put15Price": 143.27,
       "put15Delta": -0.3,
-      "put15Pvi": 152
+      "put15Pvi": 229
     },
     "SPY": {
       "close": 739.19,
@@ -70,14 +70,14 @@
       "atmIV": 9.81,
       "earningsThisWeek": false,
       "baseline": "SPY",
-      "call15Strike": 738.0,
-      "call15Price": 3.51,
-      "call15Delta": 0.31,
-      "call15Pvi": 345,
+      "call15Strike": 739.0,
+      "call15Price": 1.72,
+      "call15Delta": 0.29,
+      "call15Pvi": 169,
       "put15Strike": 728.0,
-      "put15Price": 1.55,
-      "put15Delta": -0.29,
-      "put15Pvi": 154
+      "put15Price": 1.73,
+      "put15Delta": -0.28,
+      "put15Pvi": 172
     },
     "QQQ": {
       "close": 716.77,
@@ -88,13 +88,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 720.0,
-      "call15Price": 7.13,
-      "call15Delta": 0.3,
-      "call15Pvi": 456,
+      "call15Price": 3.47,
+      "call15Delta": 0.31,
+      "call15Pvi": 222,
       "put15Strike": 702.0,
-      "put15Price": 2.34,
-      "put15Delta": -0.31,
-      "put15Pvi": 154
+      "put15Price": 3.51,
+      "put15Delta": -0.3,
+      "put15Pvi": 230
     },
     "NVDA": {
       "close": 200.8,
@@ -105,13 +105,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 202.5,
-      "call15Price": 1.35,
-      "call15Delta": 0.27,
-      "call15Pvi": 180,
+      "call15Price": 0.94,
+      "call15Delta": 0.28,
+      "call15Pvi": 126,
       "put15Strike": 195.0,
-      "put15Price": 1.21,
+      "put15Price": 0.76,
       "put15Delta": -0.23,
-      "put15Pvi": 168
+      "put15Pvi": 105
     },
     "TSLA": {
       "close": 383.58,
@@ -122,13 +122,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 382.5,
-      "call15Price": 2.85,
-      "call15Delta": 0.28,
-      "call15Pvi": 183,
+      "call15Price": 2.08,
+      "call15Delta": 0.29,
+      "call15Pvi": 133,
       "put15Strike": 370.0,
-      "put15Price": 3.35,
+      "put15Price": 2.38,
       "put15Delta": -0.31,
-      "put15Pvi": 222
+      "put15Pvi": 157
     },
     "AAPL": {
       "close": 298.2,
@@ -139,13 +139,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 297.5,
-      "call15Price": 1.16,
-      "call15Delta": 0.23,
-      "call15Pvi": 188,
+      "call15Price": 0.81,
+      "call15Delta": 0.24,
+      "call15Pvi": 131,
       "put15Strike": 290.0,
-      "put15Price": 1.43,
-      "put15Delta": -0.3,
-      "put15Pvi": 237
+      "put15Price": 1.09,
+      "put15Delta": -0.29,
+      "put15Pvi": 182
     },
     "XOM": {
       "close": 135.8,
@@ -156,13 +156,13 @@
       "earningsThisWeek": false,
       "baseline": "SPY",
       "call15Strike": 138.0,
-      "call15Price": 0.82,
-      "call15Delta": 0.35,
-      "call15Pvi": 209,
+      "call15Price": 0.67,
+      "call15Delta": 0.36,
+      "call15Pvi": 170,
       "put15Strike": 135.0,
-      "put15Price": 0.58,
+      "put15Price": 0.4,
       "put15Delta": -0.24,
-      "put15Pvi": 151
+      "put15Pvi": 103
     },
     "AMZN": {
       "close": 241.87,
@@ -173,13 +173,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 237.5,
-      "call15Price": 1.61,
+      "call15Price": 1.23,
       "call15Delta": 0.31,
-      "call15Pvi": 237,
+      "call15Pvi": 180,
       "put15Strike": 230.0,
-      "put15Price": 1.25,
+      "put15Price": 0.87,
       "put15Delta": -0.24,
-      "put15Pvi": 190
+      "put15Pvi": 133
     },
     "GOOG": {
       "close": 349.97,
@@ -190,13 +190,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 350.0,
-      "call15Price": 2.15,
+      "call15Price": 1.71,
       "call15Delta": 0.3,
-      "call15Pvi": 190,
+      "call15Pvi": 152,
       "put15Strike": 340.0,
-      "put15Price": 2.21,
+      "put15Price": 1.59,
       "put15Delta": -0.28,
-      "put15Pvi": 202
+      "put15Pvi": 145
     },
     "MSFT": {
       "close": 374.74,
@@ -207,13 +207,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 370.0,
-      "call15Price": 2.78,
+      "call15Price": 2.15,
       "call15Delta": 0.33,
-      "call15Pvi": 254,
+      "call15Pvi": 196,
       "put15Strike": 360.0,
-      "put15Price": 2.47,
-      "put15Delta": -0.29,
-      "put15Pvi": 232
+      "put15Price": 1.76,
+      "put15Delta": -0.28,
+      "put15Pvi": 165
     },
     "META": {
       "close": 565.86,
@@ -224,13 +224,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 565.0,
-      "call15Price": 4.08,
-      "call15Delta": 0.31,
-      "call15Pvi": 181,
+      "call15Price": 2.92,
+      "call15Delta": 0.32,
+      "call15Pvi": 130,
       "put15Strike": 550.0,
-      "put15Price": 3.67,
+      "put15Price": 2.65,
       "put15Delta": -0.29,
-      "put15Pvi": 168
+      "put15Pvi": 121
     },
     "NFLX": {
       "close": 72.39,
@@ -241,13 +241,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 73.0,
-      "call15Price": 0.41,
-      "call15Delta": 0.25,
-      "call15Pvi": 188,
+      "call15Price": 0.26,
+      "call15Delta": 0.26,
+      "call15Pvi": 119,
       "put15Strike": 71.0,
-      "put15Price": 0.45,
-      "put15Delta": -0.31,
-      "put15Pvi": 211
+      "put15Price": 0.33,
+      "put15Delta": -0.3,
+      "put15Pvi": 156
     },
     "AMD": {
       "close": 517.55,
@@ -258,13 +258,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 535.0,
-      "call15Price": 7.5,
+      "call15Price": 5.51,
       "call15Delta": 0.31,
-      "call15Pvi": 198,
+      "call15Pvi": 145,
       "put15Strike": 505.0,
-      "put15Price": 7.92,
+      "put15Price": 5.29,
       "put15Delta": -0.29,
-      "put15Pvi": 221
+      "put15Pvi": 148
     },
     "DELL": {
       "close": 432.79,
@@ -275,13 +275,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 450.0,
-      "call15Price": 7.47,
+      "call15Price": 5.14,
       "call15Delta": 0.3,
-      "call15Pvi": 209,
+      "call15Pvi": 144,
       "put15Strike": 420.0,
-      "put15Price": 8.03,
+      "put15Price": 5.3,
       "put15Delta": -0.29,
-      "put15Pvi": 241
+      "put15Pvi": 159
     },
     "MU": {
       "close": 1033.16,
@@ -292,13 +292,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 1120.0,
-      "call15Price": 29.8,
+      "call15Price": 21.64,
       "call15Delta": 0.3,
-      "call15Pvi": 301,
+      "call15Pvi": 219,
       "put15Strike": 995.0,
-      "put15Price": 34.47,
+      "put15Price": 24.42,
       "put15Delta": -0.3,
-      "put15Pvi": 393
+      "put15Pvi": 278
     },
     "NOW": {
       "close": 95.79,
@@ -309,13 +309,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 96.0,
-      "call15Price": 1.0,
+      "call15Price": 0.69,
       "call15Delta": 0.29,
-      "call15Pvi": 148,
+      "call15Pvi": 102,
       "put15Strike": 92.0,
-      "put15Price": 1.05,
+      "put15Price": 0.76,
       "put15Delta": -0.31,
-      "put15Pvi": 162
+      "put15Pvi": 118
     },
     "CAT": {
       "close": 999.84,
@@ -326,13 +326,13 @@
       "earningsThisWeek": false,
       "baseline": "SPY",
       "call15Strike": 1010.0,
-      "call15Price": 7.0,
+      "call15Price": 6.65,
       "call15Delta": 0.32,
-      "call15Pvi": 175,
+      "call15Pvi": 166,
       "put15Strike": 980.0,
-      "put15Price": 9.28,
+      "put15Price": 6.66,
       "put15Delta": -0.32,
-      "put15Pvi": 239
+      "put15Pvi": 172
     },
     "GS": {
       "close": 1085.25,
@@ -343,13 +343,13 @@
       "earningsThisWeek": false,
       "baseline": "SPY",
       "call15Strike": 1095.0,
-      "call15Price": 5.83,
+      "call15Price": 5.17,
       "call15Delta": 0.28,
-      "call15Pvi": 186,
+      "call15Pvi": 165,
       "put15Strike": 1060.0,
-      "put15Price": 6.55,
+      "put15Price": 5.17,
       "put15Delta": -0.28,
-      "put15Pvi": 216
+      "put15Pvi": 171
     },
     "NBIS": {
       "close": 257.76,
@@ -360,13 +360,13 @@
       "earningsThisWeek": false,
       "baseline": "QQQ",
       "call15Strike": 272.5,
-      "call15Price": 5.6,
+      "call15Price": 4.31,
       "call15Delta": 0.31,
-      "call15Pvi": 230,
+      "call15Pvi": 177,
       "put15Strike": 250.0,
-      "put15Price": 7.38,
+      "put15Price": 4.9,
       "put15Delta": -0.32,
-      "put15Pvi": 330
+      "put15Pvi": 219
     }
   }
 }
