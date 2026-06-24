@@ -33,12 +33,12 @@ jobs:
           echo "Waiting 15 seconds for OPRA connection to establish..."
           sleep 15
           
-          pip install yfinance lxml thetadata pandas python-dotenv --break-system-packages -q
+          pip install yfinance lxml "thetadata<1.0.0" pandas python-dotenv --break-system-packages -q
           python3 << 'PYEOF'
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
           import pandas as pd
-          from thetadata import ThetaClient, DataType, OptionRight, DateRange
+          from thetadata import ThetaClient, OptionReqType, OptionRight, DateRange
 
           # Connect to Terminal
           client = ThetaClient(email=os.environ["THETA_USERNAME"], password=os.environ["THETA_PASSWORD"], dataframe_type="pandas")
@@ -243,7 +243,7 @@ jobs:
                   chain = None
                   try:
                       chain = theta_client.get_hist_option(
-                          req=DataType.EOD,
+                          req=OptionReqType.EOD,
                           root=theta_sym,
                           exp=target_exp,
                           date_range=DateRange(req_date, req_date)
