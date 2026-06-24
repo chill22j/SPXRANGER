@@ -5,7 +5,7 @@ on:
     - cron: '0 21 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
-    - types: [force_update]
+    types: [force_update]
 
 jobs:
   update-market-data:
