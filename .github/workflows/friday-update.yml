@@ -2,7 +2,7 @@ name: Daily Market Update
 
 on:
   schedule:
-    - cron: '00 21 * * 1-5'
+    - cron: '0 21 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
     types: [force_update]
@@ -15,14 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Install Java 21 (Required for the Theta Terminal)
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      # 2. Boot Terminal & Run Python
       - name: Fetch market data and calculate max pain
         env:
           THETA_USERNAME: ${{ secrets.THETA_USERNAME }}
@@ -40,9 +38,9 @@ jobs:
           import yfinance as yf
           import urllib.request, json, math, datetime, time, os
           import pandas as pd
-          from thetadata import ThetaClient
+          from thetadata import ThetaClient, OptionReqType, OptionRight, DateRange
 
-          # Connect using Explicit Credentials and force standard Pandas dataframes
+          # Connect to Terminal
           client = ThetaClient(email=os.environ["THETA_USERNAME"], password=os.environ["THETA_PASSWORD"], dataframe_type="pandas")
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -117,14 +115,13 @@ jobs:
           today_date = datetime.datetime.utcnow().date()
           global_dte = (fri_next.date() - today_date).days
 
-          # SHIFTED: Evaluates the afternoon before (Monday afternoon triggers 0.20 delta for Tuesday)
           if global_dte >= 5: global_target_delta = 0.15
           elif global_dte == 4: global_target_delta = 0.20
           elif global_dte == 3: global_target_delta = 0.25
           elif global_dte == 2: global_target_delta = 0.30
           else: global_target_delta = 0.50
 
-          if frozen_data and "spx" in frozen_data:
+          if frozen_data and "spx" in frozen_data and frozen_data.get("spx") is not None:
               spx = frozen_data.get("spx")
               vix = frozen_data.get("vix")
               ndx = frozen_data.get("ndx")
@@ -142,16 +139,6 @@ jobs:
               top_puts = frozen_data.get("options", {}).get("topPuts", [])
               top_calls = frozen_data.get("options", {}).get("topCalls", [])
               options_expiry = frozen_data.get("options", {}).get("expiry")
-              
-              ndx_max_pain = frozen_data.get("ndxOptions", {}).get("maxPain")
-              ndx_top_puts = frozen_data.get("ndxOptions", {}).get("topPuts", [])
-              ndx_top_calls = frozen_data.get("ndxOptions", {}).get("topCalls", [])
-              ndx_options_expiry = frozen_data.get("ndxOptions", {}).get("expiry")
-              
-              qqq_max_pain = frozen_data.get("qqqOptions", {}).get("maxPain")
-              qqq_top_puts = frozen_data.get("qqqOptions", {}).get("topPuts", [])
-              qqq_top_calls = frozen_data.get("qqqOptions", {}).get("topCalls", [])
-              qqq_options_expiry = frozen_data.get("qqqOptions", {}).get("expiry")
           else:
               spx = round(spx_closes[last_friday_idx], 2)
               last_friday_vix = vix_closes[-1]
@@ -193,73 +180,47 @@ jobs:
               hv20 = round(math.sqrt(sum((r-(sum(log_rets)/len(log_rets)))**2 for r in log_rets)/(len(log_rets)-1))*math.sqrt(252)*100, 2) if len(log_rets) >= 2 else None
               weekof, date_str = live_weekof, live_date_str
 
-              def compute_options(yf_symbol, price, mon_dt):
-                  max_pain, top_puts, top_calls, options_expiry = None, [], [], None
-                  try:
-                      t = yf.Ticker(yf_symbol)
-                      expirations = list(t.options)
-                      target_exp = expirations[0] if expirations else None
-                      for exp in expirations:
-                          if 0 <= (datetime.datetime.strptime(exp, "%Y-%m-%d").date() - mon_dt.date()).days <= 4:
-                              target_exp = exp
-                      if target_exp:
-                          options_expiry = f"{datetime.datetime.strptime(target_exp, '%Y-%m-%d').month}/{datetime.datetime.strptime(target_exp, '%Y-%m-%d').day}"
-                          chain = t.option_chain(target_exp)
-                          calls_df = chain.calls[(chain.calls["strike"] >= price*0.85) & (chain.calls["strike"] <= price*1.15) & (chain.calls["openInterest"] > 0)]
-                          puts_df = chain.puts[(chain.puts["strike"] >= price*0.85) & (chain.puts["strike"] <= price*1.15) & (chain.puts["openInterest"] > 0)]
-                          call_oi = dict(zip(calls_df["strike"], calls_df["openInterest"]))
-                          put_oi = dict(zip(puts_df["strike"], puts_df["openInterest"]))
-                          all_strikes = sorted(set(list(call_oi.keys()) + list(put_oi.keys())))
-                          if all_strikes:
-                              min_pain = float("inf")
-                              for s in all_strikes:
-                                  cp = sum((s-k)*oi for k,oi in call_oi.items() if k < s)
-                                  pp = sum((k-s)*oi for k,oi in put_oi.items()  if k > s)
-                                  if cp+pp < min_pain:
-                                      min_pain = cp+pp
-                                      max_pain = int(s)
-                              top_puts  = sorted([{"strike":int(k),"oi":int(v)} for k,v in put_oi.items()],  key=lambda x:-x["oi"])[:4]
-                              top_calls = sorted([{"strike":int(k),"oi":int(v)} for k,v in call_oi.items()], key=lambda x:-x["oi"])[:4]
-                  except Exception: pass
-                  return max_pain, top_puts, top_calls, options_expiry
+              max_pain = None; top_puts = []; top_calls = []; options_expiry = None
 
-              max_pain, top_puts, top_calls, options_expiry = compute_options("^SPX", spx, mon)
-              ndx_max_pain = ndx_top_puts = ndx_top_calls = ndx_options_expiry = None
-              qqq_max_pain = qqq_top_puts = qqq_top_calls = qqq_options_expiry = None
-              if ndx is not None: ndx_max_pain, ndx_top_puts, ndx_top_calls, ndx_options_expiry = compute_options("^NDX", ndx, mon)
-              if qqq is not None: qqq_max_pain, qqq_top_puts, qqq_top_calls, qqq_options_expiry = compute_options("QQQ", qqq, mon)
-
-          def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data, theta_client):
+          def compute_individual_metrics(display_name, yf_symbol, mon_dt, index_baselines, frozen_stock_data, theta_client, req_date):
               try:
-                  t = yf.Ticker(yf_symbol)
-                  hist = t.history(period="3mo")
-                  if hist.empty: return None
-                  live_close = round(hist["Close"].iloc[-1], 2)
+                  # 1. Fetch live closing price bypassing yfinance entirely
+                  chart_data = fetch_chart(yf_symbol, "3mo")
+                  closes = chart_data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+                  valid_closes = [c for c in closes if c and c > 0]
+                  if not valid_closes: return None
+                  live_close = round(valid_closes[-1], 2)
                   
-                  valid_closes = [c for c in hist["Close"].tolist() if c and not math.isnan(c) and c > 0]
+                  # 2. Calculate Historical Volatility natively
                   ticker_hv = 0.20
                   if len(valid_closes) > 2:
                       log_rets = []
                       for i in range(1, len(valid_closes)):
                           ratio = valid_closes[i] / valid_closes[i-1]
-                          if 0.5 < ratio < 2.0: 
-                              log_rets.append(math.log(ratio))
+                          if 0.5 < ratio < 2.0: log_rets.append(math.log(ratio))
                       if len(log_rets) > 1:
                           avg_ret = sum(log_rets) / len(log_rets)
                           var = sum((r - avg_ret)**2 for r in log_rets) / (len(log_rets) - 1)
                           ticker_hv = math.sqrt(var) * math.sqrt(252)
                           if ticker_hv <= 0.05: ticker_hv = 0.05
 
-                  expirations = list(t.options)
-                  target_exp = expirations[0] if expirations else None
-                  for exp in expirations:
-                      if 0 <= (datetime.datetime.strptime(exp, "%Y-%m-%d").date() - mon_dt.date()).days <= 4:
-                          target_exp = exp
+                  # 3. Determine clean OPRA ticker
+                  if display_name == "SPX": theta_sym = "SPXW"
+                  elif display_name == "NDX": theta_sym = "NDXP"
+                  else: theta_sym = yf_symbol
 
-                  exp_dt = datetime.datetime.strptime(target_exp, "%Y-%m-%d")
-                  days_to_exp = max((exp_dt.date() - datetime.datetime.utcnow().date()).days, 1)
+                  # 4. Get Expirations directly from Theta Data
+                  expirations = theta_client.get_expirations(root=theta_sym)
+                  if not expirations: return None
+                  
+                  expirations.sort()
+                  target_exp = expirations[0]
+                  for exp_date in expirations:
+                      if 0 <= (exp_date - mon_dt.date()).days <= 4:
+                          target_exp = exp_date; break
 
-                  # SHIFTED: Evaluates the afternoon before
+                  days_to_exp = max((target_exp - datetime.datetime.utcnow().date()).days, 1)
+
                   if days_to_exp >= 5: global_target_delta = 0.15
                   elif days_to_exp == 4: global_target_delta = 0.20
                   elif days_to_exp == 3: global_target_delta = 0.25
@@ -277,44 +238,29 @@ jobs:
                       straddle_move = frozen_stock_data.get("straddleMove", 0.0)
                       atm_iv = frozen_stock_data.get("atmIV", 0.0)
                       earnings_this_week = frozen_stock_data.get("earningsThisWeek", False)
-                  else:
-                      try:
-                          earnings_df = t.get_earnings_dates(limit=5)
-                          if earnings_df is not None and not earnings_df.empty:
-                              fri_dt = mon_dt + datetime.timedelta(days=4)
-                              for edate in earnings_df.index:
-                                  if mon_dt.date() <= edate.to_pydatetime().replace(tzinfo=None).date() <= fri_dt.date():
-                                      earnings_this_week = True; break
-                      except Exception: pass
 
-                  # --- PURE THETA DATA OPRA LOGIC ---
-                  # Use the clean ticker symbols (SPX, not ^SPX) required by Theta Data
-                  theta_sym = display_name if display_name in ["SPX", "NDX"] else yf_symbol
-                  
-                  # The new v1.x SDK method for full chain snapshots
-                  chain = theta_client.option_snapshot_greeks_all(
-                      symbol=theta_sym,
-                      expiration=exp_dt.date(),
-                      strike="*",
-                      right="both"
-                  )
-                  
+                  # 5. Fetch the strict End-of-Day OPRA feed
+                  chain = None
+                  try:
+                      chain = theta_client.get_hist_option(
+                          req=OptionReqType.EOD,
+                          root=theta_sym,
+                          exp=target_exp,
+                          date_range=DateRange(req_date, req_date)
+                      )
+                  except Exception as e:
+                      print(f"Data not ready for {theta_sym}: {e}")
+
+                  # Graceful Fallback if market is still open and feed is empty
                   if chain is None or chain.empty:
-                      print(f"No valid options found in OPRA feed for {theta_sym}")
-                      # Return the frozen data so the Ranges page stays alive, even if Options fail
                       return {
-                          "close": range_close,
-                          "livePrice": live_close,
-                          "atmStrike": atm_strike,
-                          "straddleMove": straddle_move,
-                          "atmIV": atm_iv,
-                          "earningsThisWeek": earnings_this_week,
-                          "baseline": baseline_ticker
+                          "close": range_close, "livePrice": live_close, "atmStrike": atm_strike,
+                          "straddleMove": straddle_move, "atmIV": atm_iv,
+                          "earningsThisWeek": earnings_this_week, "baseline": baseline_ticker
                       }
                       
-                  # Safely separate calls and puts using pure Delta math (avoids string matching bugs)
-                  calls = chain[chain['delta'] > 0].copy()
-                  puts = chain[chain['delta'] < 0].copy()
+                  calls = chain[chain['right'] == OptionRight.CALL].copy()
+                  puts = chain[chain['right'] == OptionRight.PUT].copy()
                   
                   if not frozen_stock_data:
                       calls['dist'] = (calls['strike'] - range_close).abs()
@@ -323,15 +269,8 @@ jobs:
                       atm_put = puts.loc[puts['dist'].idxmin()]
                       
                       atm_strike = float(atm_call['strike'])
-                      
-                      # Safely extract the price and IV columns regardless of ThetaData's exact column naming
-                      c_price = float(atm_call['close']) if 'close' in atm_call else (float(atm_call['bid']) + float(atm_call['ask'])) / 2
-                      p_price = float(atm_put['close']) if 'close' in atm_put else (float(atm_put['bid']) + float(atm_put['ask'])) / 2
-                      c_iv = float(atm_call['iv']) if 'iv' in atm_call else float(atm_call.get('implied_vol', 0))
-                      p_iv = float(atm_put['iv']) if 'iv' in atm_put else float(atm_put.get('implied_vol', 0))
-                      
-                      straddle_move = round((c_price + p_price) * 0.85, 2)
-                      atm_iv = round(((c_iv + p_iv) / 2) * 100, 2)
+                      straddle_move = round((float(atm_call['close']) + float(atm_put['close'])) * 0.85, 2)
+                      atm_iv = round(((float(atm_call['iv']) + float(atm_put['iv'])) / 2) * 100, 2)
 
                   calls['delta_diff'] = (calls['delta'].abs() - global_target_delta).abs()
                   best_call = calls.loc[calls['delta_diff'].idxmin()]
@@ -343,44 +282,31 @@ jobs:
                   best_put_strike = float(best_put['strike'])
                   best_call_delta = float(best_call['delta'])
                   best_put_delta = float(best_put['delta'])
-                  
-                  best_call_price = float(best_call['close']) if 'close' in best_call else (float(best_call['bid']) + float(best_call['ask'])) / 2
-                  best_put_price = float(best_put['close']) if 'close' in best_put else (float(best_put['bid']) + float(best_put['ask'])) / 2
+                  best_call_price = float(best_call['close'])
+                  best_put_price = float(best_put['close'])
 
-                  # CALCULATE LIVE YIELD-ON-VARIANCE (YoV)
                   expected_move = ticker_hv * math.sqrt(days_to_exp / 252)
                   if expected_move <= 0: expected_move = 0.001 
                   
-                  call_yield = best_call_price / best_call_strike if best_call_strike else 0
-                  call_pvi = int(round((call_yield / expected_move) * 1000))
-
-                  put_yield = best_put_price / best_put_strike if best_put_strike else 0
-                  put_pvi = int(round((put_yield / expected_move) * 1000))
+                  call_pvi = int(round(((best_call_price / best_call_strike if best_call_strike else 0) / expected_move) * 1000))
+                  put_pvi = int(round(((best_put_price / best_put_strike if best_put_strike else 0) / expected_move) * 1000))
 
                   return {
-                      "close": range_close,
-                      "livePrice": live_close,
-                      "atmStrike": atm_strike,
-                      "straddleMove": straddle_move,
-                      "atmIV": atm_iv,
-                      "earningsThisWeek": earnings_this_week,
-                      "baseline": baseline_ticker,
-                      "call15Strike": float(best_call_strike),
-                      "call15Price": round(best_call_price, 2),
-                      "call15Delta": round(best_call_delta, 2),
-                      "call15Pvi": call_pvi,
-                      "put15Strike": float(best_put_strike),
-                      "put15Price": round(best_put_price, 2),
-                      "put15Delta": round(best_put_delta, 2),
-                      "put15Pvi": put_pvi
+                      "close": range_close, "livePrice": live_close, "atmStrike": atm_strike,
+                      "straddleMove": straddle_move, "atmIV": atm_iv,
+                      "earningsThisWeek": earnings_this_week, "baseline": baseline_ticker,
+                      "call15Strike": float(best_call_strike), "call15Price": round(best_call_price, 2),
+                      "call15Delta": round(best_call_delta, 2), "call15Pvi": call_pvi,
+                      "put15Strike": float(best_put_strike), "put15Price": round(best_put_price, 2),
+                      "put15Delta": round(best_put_delta, 2), "put15Pvi": put_pvi
                   }
               except Exception as e:
-                  print(f"Theta Data explicitly failed to retrieve {yf_symbol}: {e}")
+                  print(f"Error processing {yf_symbol}: {e}")
                   return None
 
           individual_data = {}
           ticker_map = {
-              "SPX": "^SPX", "NDX": "^NDX", "SPY": "SPY", "QQQ": "QQQ",
+              "SPX": "%5EGSPC", "NDX": "%5ENDX", "SPY": "SPY", "QQQ": "QQQ",
               "NVDA": "NVDA", "TSLA": "TSLA", "AAPL": "AAPL", "XOM": "XOM", 
               "AMZN": "AMZN", "GOOG": "GOOG", "MSFT": "MSFT", "META": "META", 
               "NFLX": "NFLX", "AMD": "AMD", "DELL": "DELL", "MU": "MU", 
@@ -390,23 +316,21 @@ jobs:
               "NASDAQ": ["NVDA", "TSLA", "AAPL", "AMZN", "GOOG", "MSFT", "META", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "QQQ", "^NDX"]
           }
           
+          req_dt = last_trading_dt.date()
           for display_name, yf_sym in ticker_map.items():
               f_data = frozen_data.get("individuals", {}).get(display_name) if frozen_data else None
-              individual_data[display_name] = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data, client)
-              print(f"{display_name} Data Pulled")
+              individual_data[display_name] = compute_individual_metrics(display_name, yf_sym, mon, baselines, f_data, client, req_dt)
+              print(f"{display_name} Data OK")
               time.sleep(0.5) 
 
           payload = {
-              "spx": spx, "vix": vix, "hv20": hv20,
-              "ma50": ma50, "stretch": stretch_pct,
-              "ndx": ndx, "vxn": vxn, "qqq": qqq,
-              "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
-              "date": date_str, "weekof": weekof,
-              "targetDelta": global_target_delta,
+              "spx": spx, "vix": vix, "hv20": hv20, "ma50": ma50, "stretch": stretch_pct,
+              "ndx": ndx, "vxn": vxn, "qqq": qqq, "ndxMa50": ndx_ma50, "ndxStretch": ndx_stretch_pct,
+              "date": date_str, "weekof": weekof, "targetDelta": global_target_delta,
               "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "options":    {"expiry": options_expiry,     "maxPain": max_pain,     "topPuts": top_puts,     "topCalls": top_calls},
-              "ndxOptions": {"expiry": ndx_options_expiry, "maxPain": ndx_max_pain, "topPuts": ndx_top_puts, "topCalls": ndx_top_calls},
-              "qqqOptions": {"expiry": qqq_options_expiry, "maxPain": qqq_max_pain, "topPuts": qqq_top_puts, "topCalls": qqq_top_calls},
+              "options":    {"expiry": options_expiry, "maxPain": max_pain, "topPuts": top_puts, "topCalls": top_calls},
+              "ndxOptions": {"expiry": None, "maxPain": None, "topPuts": [], "topCalls": []},
+              "qqqOptions": {"expiry": None, "maxPain": None, "topPuts": [], "topCalls": []},
               "individuals": individual_data
           }
           with open("data/market.json", "w") as f:
