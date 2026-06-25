@@ -2,7 +2,7 @@ name: Daily Market Update
 
 on:
   schedule:
-    - cron: '0 21 * * 5'  # Autopilot ONLY runs on Friday
+    - cron: '0 21 * * 5'  # Autopilot ONLY runs on Friday at 3:00 PM PM MST (21:00 UTC)
   workflow_dispatch:
     inputs:
       custom_delta:
@@ -171,11 +171,11 @@ jobs:
           today_date = datetime.datetime.utcnow().date()
           global_dte = max((fri_next.date() - today_date).days, 1)
 
-          # Delta Selection: Manual Override vs Automated Defaults
+          # Delta Selection Logic
           if is_manual_run:
               try:
                   global_target_delta = float(manual_delta_str)
-                  print(f"Manual Refresh Triggered! Targeting {global_target_delta} Deltas.")
+                  print(f"Manual Refresh Override: Targeting {global_target_delta} Delta.")
               except ValueError:
                   global_target_delta = 0.15
           else:
@@ -253,7 +253,6 @@ jobs:
                   if hist.empty: return None
                   
                   live_close = round(hist['Close'].iloc[-1], 2)
-                  
                   range_close = frozen_stock_data.get("close", live_close) if frozen_stock_data else live_close
                   baseline_ticker = "QQQ" if yf_symbol in index_baselines["NASDAQ"] else "SPY"
                   
@@ -268,7 +267,6 @@ jobs:
                   if not expirations: return None
                   
                   parsed_exps = [datetime.datetime.strptime(x, "%Y-%m-%d").date() for x in expirations]
-                  
                   fri_next_dt = mon_dt + datetime.timedelta(days=4)
                   target_exp_date = min(parsed_exps, key=lambda d: abs((d - fri_next_dt.date()).days))
                   target_exp_str = target_exp_date.strftime("%Y-%m-%d")
@@ -301,8 +299,6 @@ jobs:
 
                   if not frozen_stock_data:
                       atm_strike = float(live_atm_call['strike'])
-                      
-                      # Dynamic switch: Live tape for manual pulls, math engine for automated safety
                       if is_manual_run:
                           c_price = get_live_price(live_atm_call)
                           p_price = get_live_price(live_atm_put)
@@ -339,7 +335,6 @@ jobs:
                   puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - global_tgt_delta).abs()
                   best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
-                  # Dynamic target pricing switch
                   if is_manual_run:
                       bc_price = get_live_price(best_call)
                       bp_price = get_live_price(best_put)
@@ -410,5 +405,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "feat: implement dual-engine architecture for live mid-week pulls"
+          git diff --staged --quiet || git commit -m "feat: complete workflow synchronization with dual-engine pricing"
           git push
