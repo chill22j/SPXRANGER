@@ -2,8 +2,13 @@ name: Daily Market Update
 
 on:
   schedule:
-    - cron: '0 21 * * 1-5'
+    - cron: '0 21 * * 5'  # Autopilot ONLY runs on Friday
   workflow_dispatch:
+    inputs:
+      custom_delta:
+        description: 'Target Delta (e.g., 0.15, 0.30)'
+        required: true
+        default: '0.15'
   repository_dispatch:
     types: [force_update]
 
@@ -12,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      CUSTOM_DELTA: ${{ github.event.inputs.custom_delta }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +30,10 @@ jobs:
           import urllib.request, json, math, datetime, time, os
           import pandas as pd
           import numpy as np
+          
+          # Detect if this is a manual button click
+          manual_delta_str = os.environ.get("CUSTOM_DELTA", "")
+          is_manual_run = bool(manual_delta_str and manual_delta_str.strip())
           
           def calculate_bs_delta(spot, strike, dte, iv, is_call=True):
               if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
@@ -36,6 +47,7 @@ jobs:
                   
               return norm_cdf(d1) if is_call else norm_cdf(d1) - 1.0
 
+          # Engine 1: Theoretical Pricing (For After-Hours Safety)
           def calculate_bs_price(spot, strike, dte, iv, is_call=True):
               if dte <= 0 or iv <= 0 or spot <= 0 or strike <= 0:
                   return 0.01
@@ -52,6 +64,16 @@ jobs:
               else:
                   price = strike * math.exp(-r * t) * norm_cdf(-d2) - spot * norm_cdf(-d1)
               return max(price, 0.01)
+
+          # Engine 2: Live Tape Midpoint (For Mid-Week Manual Refreshes)
+          def get_live_price(row):
+              b = float(row.get('bid', 0)) if pd.notnull(row.get('bid')) else 0
+              a = float(row.get('ask', 0)) if pd.notnull(row.get('ask')) else 0
+              if b > 0 and a > 0: return (b + a) / 2.0
+              if b > 0: return b
+              if a > 0: return a
+              lp = float(row.get('lastPrice', 0)) if pd.notnull(row.get('lastPrice')) else 0
+              return lp if lp > 0 else 0.01
 
           HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -94,17 +116,9 @@ jobs:
                                   ts = earns[0].get("raw")
                                   if ts:
                                       dt = datetime.datetime.utcfromtimestamp(ts).date()
-                                      
-                                      # Hardcoded AM/PM tendencies for your specific dashboard tickers
                                       am_tickers = ["CAT", "GS"]
                                       pm_tickers = ["AAPL", "AMZN", "GOOG", "MSFT", "META", "NVDA", "TSLA", "NFLX", "AMD", "DELL", "MU", "NOW", "NBIS", "XOM"]
-                                      
-                                      time_flag = ""
-                                      if symbol in am_tickers:
-                                          time_flag = " AM"
-                                      elif symbol in pm_tickers:
-                                          time_flag = " PM"
-                                          
+                                      time_flag = " AM" if symbol in am_tickers else " PM" if symbol in pm_tickers else ""
                                       return dt, time_flag
                   except:
                       time.sleep(1)
@@ -157,11 +171,19 @@ jobs:
           today_date = datetime.datetime.utcnow().date()
           global_dte = max((fri_next.date() - today_date).days, 1)
 
-          if global_dte >= 5: global_target_delta = 0.15
-          elif global_dte == 4: global_target_delta = 0.20
-          elif global_dte == 3: global_target_delta = 0.25
-          elif global_dte == 2: global_target_delta = 0.30
-          else: global_target_delta = 0.30
+          # Delta Selection: Manual Override vs Automated Defaults
+          if is_manual_run:
+              try:
+                  global_target_delta = float(manual_delta_str)
+                  print(f"Manual Refresh Triggered! Targeting {global_target_delta} Deltas.")
+              except ValueError:
+                  global_target_delta = 0.15
+          else:
+              if global_dte >= 5: global_target_delta = 0.15
+              elif global_dte == 4: global_target_delta = 0.20
+              elif global_dte == 3: global_target_delta = 0.25
+              elif global_dte == 2: global_target_delta = 0.30
+              else: global_target_delta = 0.30
 
           if frozen_data and "spx" in frozen_data and frozen_data.get("spx") is not None:
               spx = frozen_data.get("spx")
@@ -279,8 +301,15 @@ jobs:
 
                   if not frozen_stock_data:
                       atm_strike = float(live_atm_call['strike'])
-                      c_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=True)
-                      p_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=False)
+                      
+                      # Dynamic switch: Live tape for manual pulls, math engine for automated safety
+                      if is_manual_run:
+                          c_price = get_live_price(live_atm_call)
+                          p_price = get_live_price(live_atm_put)
+                      else:
+                          c_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=True)
+                          p_price = calculate_bs_price(live_close, atm_strike, days_to_exp, clean_iv, is_call=False)
+                          
                       straddle_move = round((c_price + p_price) * 0.85, 2)
                       atm_iv = round(clean_iv * 100, 2)
                       
@@ -310,8 +339,13 @@ jobs:
                   puts_df['delta_diff'] = (puts_df['bs_delta'].abs() - global_tgt_delta).abs()
                   best_put = puts_df.loc[puts_df['delta_diff'].idxmin()]
 
-                  bc_price = calculate_bs_price(live_close, float(best_call['strike']), days_to_exp, clean_iv, is_call=True)
-                  bp_price = calculate_bs_price(live_close, float(best_put['strike']), days_to_exp, clean_iv, is_call=False)
+                  # Dynamic target pricing switch
+                  if is_manual_run:
+                      bc_price = get_live_price(best_call)
+                      bp_price = get_live_price(best_put)
+                  else:
+                      bc_price = calculate_bs_price(live_close, float(best_call['strike']), days_to_exp, clean_iv, is_call=True)
+                      bp_price = calculate_bs_price(live_close, float(best_put['strike']), days_to_exp, clean_iv, is_call=False)
 
                   call_pvi = int(round(((bc_price / float(best_call['strike'])) / expected_move_pct) * 1000)) if best_call['strike'] else 0
                   put_pvi = int(round(((bp_price / float(best_put['strike'])) / expected_move_pct) * 1000)) if best_put['strike'] else 0
@@ -376,5 +410,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/market.json || true
           git add data/scorecard.csv || true
-          git diff --staged --quiet || git commit -m "feat: inject curated AM/PM logic to earnings badges"
+          git diff --staged --quiet || git commit -m "feat: implement dual-engine architecture for live mid-week pulls"
           git push
