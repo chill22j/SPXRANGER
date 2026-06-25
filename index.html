@@ -235,8 +235,38 @@
 <div class="container">
   <header>
     <div class="header-top"><h1>Weekly Range Calculator</h1><span class="version">v6.0.0</span></div>
-    <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every Saturday</div>
+    <div class="subtitle">Multi-ticker weekly range predictor — Auto-updating every weekend</div>
   </header>
+  
+<div id="refresh-container" style="margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; background: #1a1a24;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin: 0; color: #fff; font-size: 16px;">Live Market Pull</h3>
+        <button id="toggle-settings-btn" style="background: none; border: none; color: #007bff; cursor: pointer;">⚙️ Settings</button>
+    </div>
+
+    <div id="settings-panel" style="display: none; margin-bottom: 15px;">
+        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 5px;">GitHub Personal Access Token:</label>
+        <input type="password" id="github-pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 100%; padding: 8px; background: #0a0a0f; border: 1px solid #333; color: #fff; border-radius: 4px; box-sizing: border-box;">
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <label style="color: #aaa; font-size: 14px;">Target Delta:</label>
+        <select id="target-delta" style="padding: 6px; background: #0a0a0f; color: #fff; border: 1px solid #333; border-radius: 4px;">
+            <option value="0.10">0.10</option>
+            <option value="0.15" selected>0.15 (Weekend Default)</option>
+            <option value="0.20">0.20</option>
+            <option value="0.25">0.25</option>
+            <option value="0.30">0.30</option>
+        </select>
+        <button id="refresh-btn" style="padding: 6px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Refresh Now</button>
+    </div>
+
+    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffeeba; color: #856404; font-size: 12px; border-radius: 4px;">
+        <strong>⚠️ Market Data Notice:</strong> Intraday options quotes may be delayed by up to 15 minutes due to exchange regulations.
+    </div>
+
+    <p id="refresh-status" style="margin-top: 15px; font-size: 14px; font-weight: bold;"></p>
+</div>  
 
 <div class="main-tabs">
   <button class="main-tab-btn active" data-ticker="RANGES" onclick="switchTicker('RANGES')">RANGES</button>
@@ -982,6 +1012,75 @@
   loadLatestData();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+  // ======= LIVE REFRESH LOGIC =======
+  const settingsBtn = document.getElementById('toggle-settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  const patInput = document.getElementById('github-pat');
+  const refreshBtn = document.getElementById('refresh-btn');
+  const statusDisplay = document.getElementById('refresh-status');
+  const deltaSelect = document.getElementById('target-delta');
+
+  // Load saved PAT
+  const savedToken = localStorage.getItem('github_pat');
+  if (savedToken) patInput.value = savedToken;
+
+  // Toggle settings visibility
+  settingsBtn.addEventListener('click', () => {
+      settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Save PAT on change
+  patInput.addEventListener('input', (e) => {
+      localStorage.setItem('github_pat', e.target.value);
+  });
+
+  // Trigger Action
+  refreshBtn.addEventListener('click', async () => {
+      const token = patInput.value.trim();
+      const delta = deltaSelect.value;
+
+      if (!token) {
+          statusDisplay.innerText = 'Error: Please enter your GitHub Token in settings first.';
+          statusDisplay.style.color = '#ef4444'; // Red
+          return;
+      }
+
+      statusDisplay.innerText = 'Triggering live refresh...';
+      statusDisplay.style.color = '#3b82f6'; // Blue
+
+      // REPLACE THESE WITH YOUR ACTUAL GITHUB DETAILS
+      const GITHUB_USERNAME = 'chill22j';
+      const REPO_NAME = 'SPXRANGER';
+      const WORKFLOW_FILENAME = 'friday-update.yml';
+
+      try {
+          const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/actions/workflows/${WORKFLOW_FILENAME}/dispatches`, {
+              method: 'POST',
+              headers: {
+                  'Accept': 'application/vnd.github.v3+json',
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  ref: 'main',
+                  inputs: { custom_delta: delta }
+              })
+          });
+
+          if (response.ok) {
+              statusDisplay.innerText = 'Success! GitHub is fetching live prices. Dashboard will update in ~45 seconds.';
+              statusDisplay.style.color = '#22c55e'; // Green
+          } else {
+              const errorData = await response.json();
+              statusDisplay.innerText = `Error: ${errorData.message}`;
+              statusDisplay.style.color = '#ef4444'; // Red
+          }
+      } catch (error) {
+          statusDisplay.innerText = `Network Error: ${error.message}`;
+          statusDisplay.style.color = '#ef4444'; // Red
+      }
+  });
 </script>
 </body>
 </html>
