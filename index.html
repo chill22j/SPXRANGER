@@ -243,34 +243,31 @@
   <button class="main-tab-btn" data-ticker="OPM" onclick="switchTicker('OPM')">OPTIONS PRICING</button>
 </div>
 
-<div id="refresh-container" style="display: none; margin: 0 10px 20px 10px; padding: 15px; border: 1px solid #333; border-radius: 8px; background: #1a1a24;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 style="margin: 0; color: #fff; font-size: 16px;">Live Market Pull</h3>
-          <button id="toggle-settings-btn" style="background: none; border: none; color: #007bff; cursor: pointer;">⚙️ Settings</button>
-      </div>
-
-      <div id="settings-panel" style="display: none; margin-bottom: 15px;">
-          <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 5px;">GitHub Personal Access Token:</label>
-          <input type="password" id="github-pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 100%; padding: 8px; background: #0a0a0f; border: 1px solid #333; color: #fff; border-radius: 4px; box-sizing: border-box;">
-      </div>
-
-      <div style="display: flex; gap: 10px; align-items: center;">
-          <label style="color: #aaa; font-size: 14px;">Target Delta:</label>
-          <select id="target-delta" style="padding: 6px; background: #0a0a0f; color: #fff; border: 1px solid #333; border-radius: 4px;">
-              <option value="0.10">0.10</option>
-              <option value="0.15" selected>0.15 (Weekend Default)</option>
-              <option value="0.20">0.20</option>
-              <option value="0.25">0.25</option>
-              <option value="0.30">0.30</option>
+<div id="refresh-container" style="display: none; margin: 5px 10px 15px auto; max-width: 350px; text-align: right;">
+      
+      <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; font-size: 13px;">
+          <button id="toggle-settings-btn" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px; font-size: 12px;">⚙️ Setup</button>
+          
+          <select id="target-delta" style="padding: 4px 8px; background: #1a1a24; color: #e5e7eb; border: 1px solid #374151; border-radius: 4px; font-size: 12px; cursor: pointer;">
+              <option value="0.10">0.10 Δ</option>
+              <option value="0.15" selected>0.15 Δ (Default)</option>
+              <option value="0.20">0.20 Δ</option>
+              <option value="0.25">0.25 Δ</option>
+              <option value="0.30">0.30 Δ</option>
           </select>
-          <button id="refresh-btn" style="padding: 6px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Refresh Now</button>
+          
+          <button id="refresh-btn" style="padding: 5px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s;">⟳ Live Pull</button>
       </div>
 
-      <div id="opra-warning" style="display: none; margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffeeba; color: #856404; font-size: 12px; border-radius: 4px;">
-          <strong>⚠️ Market Data Notice:</strong> Intraday options quotes may be delayed by up to 15 minutes due to exchange regulations.
+      <div id="settings-panel" style="display: none; margin-top: 8px;">
+          <input type="password" id="github-pat" placeholder="GitHub Token (ghp_...)" style="width: 220px; padding: 6px; background: #0a0a0f; border: 1px solid #374151; color: #fff; border-radius: 4px; font-size: 12px;">
       </div>
 
-      <p id="refresh-status" style="margin-top: 15px; font-size: 14px; font-weight: bold;"></p>
+      <div id="opra-warning" style="display: none; margin-top: 8px; padding: 6px 8px; background: rgba(234, 179, 8, 0.1); border-left: 3px solid #eab308; color: #fde047; font-size: 11px; text-align: left; border-radius: 3px;">
+          ⚠️ Data may be delayed 15 mins (OPRA limits).
+      </div>
+
+      <p id="refresh-status" style="margin-top: 8px; font-size: 12px; font-weight: bold; margin-bottom: 0;"></p>
   </div>
 
   <div class="card" id="summaryView">
@@ -1032,10 +1029,11 @@
       localStorage.setItem('github_pat', e.target.value);
   });
 
-  // Trigger Action
+  // Trigger Action & Auto-Refresh
   refreshBtn.addEventListener('click', async () => {
       const token = patInput.value.trim();
       const delta = deltaSelect.value;
+      const opraWarning = document.getElementById('opra-warning');
 
       if (!token) {
           statusDisplay.innerText = 'Error: Please enter your GitHub Token in settings first.';
@@ -1054,6 +1052,9 @@
       const REPO_NAME = 'SPXRANGER'; // e.g., 'trading-dashboard'
       const WORKFLOW_FILENAME = 'friday-update.yml';
 
+      // Capture the current timestamp so we know when the file has changed
+      const currentTimestamp = marketData ? marketData.updated : null;
+
       try {
           const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/actions/workflows/${WORKFLOW_FILENAME}/dispatches`, {
               method: 'POST',
@@ -1063,14 +1064,37 @@
                   'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                  ref: 'main', // change this if your default branch is 'master'
+                  ref: 'main', 
                   inputs: { custom_delta: delta }
               })
           });
 
           if (response.ok) {
-              statusDisplay.innerText = 'Success! GitHub is fetching live prices. Please wait 45 seconds, then refresh the webpage.';
-              statusDisplay.style.color = '#22c55e'; 
+              statusDisplay.innerText = 'Success! Crunching data... Dashboard will auto-refresh when ready.';
+              statusDisplay.style.color = '#eab308'; // Yellow waiting color
+              
+              // Start pinging the JSON file every 5 seconds
+              const pollInterval = setInterval(async () => {
+                  try {
+                      // Adding Date.now() prevents the browser from using a cached version
+                      const res = await fetch('data/market.json?_=' + Date.now());
+                      if (res.ok) {
+                          const newData = await res.json();
+                          // If the timestamp changed, the new data is published!
+                          if (newData.updated && newData.updated !== currentTimestamp) {
+                              clearInterval(pollInterval);
+                              statusDisplay.innerText = 'Data loaded! Refreshing...';
+                              statusDisplay.style.color = '#22c55e'; // Green success color
+                              
+                              // Auto-reload the page
+                              setTimeout(() => window.location.reload(), 1000);
+                          }
+                      }
+                  } catch (e) {
+                      // Ignore network errors during polling, just keep trying
+                  }
+              }, 5000);
+
           } else {
               const errorData = await response.json();
               statusDisplay.innerText = `Error: ${errorData.message || response.statusText}`;
